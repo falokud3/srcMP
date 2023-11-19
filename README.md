@@ -2,10 +2,10 @@
 A program that parsers source code in the from of srcML XML and identifies opportunities for parallelization
 
 ## Compile
-`npx tsc xml-parser.ts`
+`npx tsc`
 
 ## Execute
-`node xml-parser.js` or `./main.js`
+`node build/xml-parser.js`
 
-### Both
-`npx tsc ; ./main.js tests/for-loop.cpp.xml`
+## Both
+`npx tsc ; node build/xml-parser.js`

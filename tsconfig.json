@@ -1,5 +1,8 @@
 {
   "compilerOptions": {
-    "outDir": "build"
+    "target": "ES6", // specifices the version of JS
+    "outDir": "build", // specifices the outptut directory
+    "moduleResolution": "Node16", // similar to compilerPath settings; needed for ts to find module
+    "module": "Node16"
   }
 }

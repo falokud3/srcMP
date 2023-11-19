@@ -1,6 +1,8 @@
-import * as fs from 'fs'
-// import * as libxmljs from 'libxmljs2'
-import libxmljs = require('libxmljs2')
+import * as fs from 'fs';
+import * as libxmljs from 'libxmljs2';
+// import libxmljs = require('libxmljs2')
+import { DDG_Node, DDG } from './ddg.js';
+
 
 // TO-DO: PARSE unit tag for namespaces
 const namespaces = {'xmlns': 'http://www.srcML.org/srcML/src'}
@@ -39,14 +41,26 @@ function begin_parse(srcPath: string) {
     simpleDOALL(doc.root())
 }
 
+// function main() {
+//     if (process.argv.length < 3) {
+//         console.error("Specify python source file as command-line argument.")
+//     } else {
+//         for (let i = 2; i < process.argv.length; i++) {
+//             begin_parse(process.argv[i])
+//         }
+//     }
+// }
+
 function main() {
-    if (process.argv.length < 3) {
-        console.error("Specify python source file as command-line argument.")
-    } else {
-        for (let i = 2; i < process.argv.length; i++) {
-            begin_parse(process.argv[i])
-        }
-    }
+    let ddg: DDG = new DDG();
+    const one: DDG_Node = new DDG_Node("1", "int");
+    const two: DDG_Node = new DDG_Node("2", "int");
+    const three = new DDG_Node("3", "int");
+    ddg.addEdge(one, two); // change add edge; to add vertex as well
+    ddg.addEdge(two, three);
+    ddg.addEdge(three, one);
+    console.log(ddg.toString());
+    console.log(ddg.isCyclic());
 }
   
-main()
+main();
