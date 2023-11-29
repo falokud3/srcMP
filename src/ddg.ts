@@ -88,6 +88,7 @@ class DirectedDependencyGraph {
             }
         }
 
+        currentPath.pop();
         return false;
 
     }
