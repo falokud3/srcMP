@@ -105,7 +105,7 @@ class DirectedDependencyGraph {
         this.nodes.forEach((node) => {
             output += node.toString();
         })
-        return output;
+        return output.substring(0, output.length - 1);
     }
 }
 
@@ -113,18 +113,10 @@ class DirectedDependencyGraph {
 class Node {
     // May replace with symbol table ID and lookup methods
     private name : string;
-    private data_type : string; // may replace with enum
     private children : Set<Node>
 
-    public constructor(name: string, data_type: string) {
+    public constructor(name: string) {
         this.name = name;
-        this.data_type = data_type;
-        this.children = new Set<Node>();
-    }
-
-    public Node(name: string) {
-        this.name = name;
-        this.data_type = "NULL";
         this.children = new Set<Node>();
     }
 
@@ -144,12 +136,13 @@ class Node {
     }
 
     public toString(): string {
-        let output: string = this.name + " ->";
-        this.children.forEach((node) => {output += " " + node.name;});
-        output += "\n";
+        let output: string = "";
+        this.children.forEach((node) => {
+            output += this.name + " -> " + node.name + "\n";
+        });
         return output;
     }
 
 }
 
-export {Node as DDG_Node, DirectedDependencyGraph as DDG}
+export {Node as DDG_Node, DirectedDependencyGraph}

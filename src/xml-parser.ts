@@ -1,73 +1,34 @@
 import * as fs from 'fs';
 import * as libxmljs from 'libxmljs2';
 // import libxmljs = require('libxmljs2')
-import { DDG_Node, DDG } from './ddg.js';
+import { DDG_Node, DirectedDependencyGraph } from './ddg.js';
 import assert from 'assert';
 
 
 // TO-DO: PARSE unit tag for namespaces
 const namespaces = {'xmlns': 'http://www.srcML.org/srcML/src'}
 
-function isElement(root: libxmljs.Element | libxmljs.Node): root is libxmljs.Element {
-    return (root as libxmljs.Element).childNodes !== undefined;
-  }
-
-
-function forsToDDG(root: libxmljs.Element) : void {
-    const forLoops = root.find('//xmlns:for', namespaces) as libxmljs.Element[];
-    forLoops.forEach((forNode) => {
-        const ddg = buildLoopDDG(forNode);
-        // TO-DO: FIX CYCLIC
-        if (!ddg.isCyclic()) console.log("Parallelizable For @ Line: " + forNode.line());
-    });
-    
+function nameToNode(name: libxmljs.Element) : DDG_Node {
+    return new DDG_Node('');
 }
-
-  // OLD APPROACH
-function simpleDOALL(root: libxmljs.Element) : void {
-    // retrieves every for loop
-    const forLoops = root.find('//xmlns:for', namespaces) as libxmljs.Element[];
-
-    for (let i = 0; i < forLoops.length; i++) {
-        const loopNode = forLoops[i] as libxmljs.Element
-        // console.log(loopNode.name());
-        const loopVariable = loopNode.find("xmlns:control/xmlns:init/xmlns:decl/xmlns:name", namespaces)[0] as libxmljs.Element
-        const loopBody = loopNode.find("xmlns:block/xmlns:block_content", "http://www.srcML.org/srcML/src")[0] as libxmljs.Element
-        // find all instances where the loopVariable is used, if it is being modified than assume loop is unparallelizable
-        const names = loopBody.find('.//xmlns:name', 'http://www.srcML.org/srcML/src').filter((name) => { 
-            if (isElement(name)) {
-                return name.text() === loopVariable.text()
-            }
-            return false;
-        })
-        let canMT = true
-        for (let i = 0; i < names.length; i ++) {
-            if ((names[i].parent() as libxmljs.Element).childNodes().length > 1) {
-                canMT = false
-                break
-            }
-        }
-        if (canMT) console.log("Parallelizable For @ Line: " + loopNode.line())
-    }
-}
-
+  
 /**
  * Takes a for loop xml element and builds a ddg from it. Throws an error
  * if the passed element is not a for loop
  * @param root the for xml element
  * @returns DDG representingb the for loop
  */
-function buildLoopDDG(root: libxmljs.Element) : DDG {
+function buildLoopDDG(root: libxmljs.Element) : DirectedDependencyGraph {
     assert(root.name() === 'for');
 
-    const ddg = new DDG();
+    const ddg = new DirectedDependencyGraph();
     // go through all the declarations
     const decl_statements = root.find(".//xmlns:decl", namespaces) as libxmljs.Element[]; 
     decl_statements.forEach((decl) => {
         // TO-DO: add clause for INIT
         const type = (decl.get('./xmlns:type/xmlns:name', namespaces) as libxmljs.Element).text();
         const name = (decl.get('./xmlns:name', namespaces) as libxmljs.Element).text();
-        ddg.addVertex(new DDG_Node(name, type));
+        ddg.addVertex(new DDG_Node(name));
     });
 
     // get all expressions
@@ -88,7 +49,7 @@ function buildLoopDDG(root: libxmljs.Element) : DDG {
                 // NOTE: object dependencies won't work yet;
             const vars = expr.find('./xmlns:name', namespaces) as libxmljs.Element[];
             vars.forEach((variable) => {
-                ddg.addEdge( new DDG_Node(target.text(), "NULL"), new DDG_Node(variable.text(), "NULL"));
+                ddg.addEdge( new DDG_Node(target.text()), new DDG_Node(variable.text()));
             });
         }
 
@@ -105,7 +66,7 @@ function buildLoopDDG(root: libxmljs.Element) : DDG {
             const variables = expr.find('./xmlns:name', namespaces) as libxmljs.Element[];
             const target = variables[0];
             variables.slice(1).forEach((source) => {
-                ddg.addEdge(new DDG_Node(target.text(), "NULL"), new DDG_Node(source.text(), "NULL"))
+                ddg.addEdge(new DDG_Node(target.text()), new DDG_Node(source.text()))
             });
         }
 
@@ -122,6 +83,21 @@ function buildLoopDDG(root: libxmljs.Element) : DDG {
         // TO-DO: figure out how to isolate the name of an object without
             // the method/attribute (vector.push_back())
     return ddg;
+}
+
+/**
+ * Takes the root element of a srcML document and produces a 
+ * DirectedDependencyGraph for each for loop within that document
+ * @param root xml root element
+ */
+function forsToDDG(root: libxmljs.Element) : void {
+    const forLoops = root.find('//xmlns:for', namespaces) as libxmljs.Element[];
+    forLoops.forEach((forNode) => {
+        const ddg = buildLoopDDG(forNode);
+        // TO-DO: FIX CYCLIC
+        if (!ddg.isCyclic()) console.log("Parallelizable For @ Line: " + forNode.line());
+    });
+    
 }
 
 function begin_parse(srcPath: string) {
