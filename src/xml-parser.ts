@@ -4,8 +4,9 @@ import * as libxmljs from 'libxmljs2';
 import { DDG_Node, DirectedDependencyGraph } from './ddg.js';
 import assert from 'assert';
 
+import * as LoopTools from './LoopTools.js'
 
-// TO-DO: PARSE unit tag for namespaces
+// TODO: PARSE unit tag for namespaces
 const namespaces = {'xmlns': 'http://www.srcML.org/srcML/src'}
 
 function nameToNode(name: libxmljs.Element) : DDG_Node {
@@ -25,7 +26,7 @@ function buildLoopDDG(root: libxmljs.Element) : DirectedDependencyGraph {
     // go through all the declarations
     const decl_statements = root.find(".//xmlns:decl", namespaces) as libxmljs.Element[]; 
     decl_statements.forEach((decl) => {
-        // TO-DO: add clause for INIT
+        // TODO: add clause for INIT
         const type = (decl.get('./xmlns:type/xmlns:name', namespaces) as libxmljs.Element).text();
         const name = (decl.get('./xmlns:name', namespaces) as libxmljs.Element).text();
         ddg.addVertex(new DDG_Node(name));
@@ -74,13 +75,13 @@ function buildLoopDDG(root: libxmljs.Element) : DirectedDependencyGraph {
 
     console.log(ddg.toString());
 
-    //TO-DO: treat array indices as variables
-    //TO-DO: object members
+    // TODO: treat array indices as variables
+    // TODO: object members
 
     // variable usage through the name
         // exception: method names have call parent
         // exception: data types have type parent
-        // TO-DO: figure out how to isolate the name of an object without
+        // TODO: figure out how to isolate the name of an object without
             // the method/attribute (vector.push_back())
     return ddg;
 }
@@ -94,15 +95,23 @@ function forsToDDG(root: libxmljs.Element) : void {
     const forLoops = root.find('//xmlns:for', namespaces) as libxmljs.Element[];
     forLoops.forEach((forNode) => {
         const ddg = buildLoopDDG(forNode);
-        // TO-DO: FIX CYCLIC
+        // TODO: FIX CYCLIC
         if (!ddg.isCyclic()) console.log("Parallelizable For @ Line: " + forNode.line());
+    });
+    
+}
+
+function testGetArrayAccesses(root: libxmljs.Element) : void {
+    const forLoops = root.find('//xmlns:for', namespaces) as libxmljs.Element[];
+    forLoops.forEach((forNode) => {
+        LoopTools.getArrayAccesses(forNode);
     });
     
 }
 
 function begin_parse(srcPath: string) {
     const doc = libxmljs.parseXmlString(fs.readFileSync(srcPath).toString())
-    forsToDDG(doc.root())
+    testGetArrayAccesses(doc.root())
 }
 
 function main() : void {
