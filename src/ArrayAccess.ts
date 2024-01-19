@@ -4,15 +4,15 @@ class ArrayAccess {
 
     // ? should this be an enum??
 
-    public static readonly write_access: number = 0;
-    public static readonly read_access: number = 1;
+    public static readonly write_access: string = "Write";
+    public static readonly read_access: string = "Read";
 
-    private access_type: number;
+    private access_type: string;
     private access_expr: xml.Element;
     private enclosing_loop: xml.Element;
     private parent_stmt: xml.Element;
      
-    constructor(access_type: number, access_expr: xml.Element,
+    constructor(access_type: string, access_expr: xml.Element,
         enclosing_loop: xml.Element, parent_stmt: xml.Element) {
         this.access_type = access_type;
         this.access_expr = access_expr;
@@ -21,6 +21,13 @@ class ArrayAccess {
     }
     
     // TODO: getters & setters
+    public getAccessType() : string {
+        return this.access_type;
+    }
+
+    public getEnclosingLoop() : xml.Element {
+        return this.enclosing_loop;
+    }
 
     // mayble: get loop nest of enclosing list
 

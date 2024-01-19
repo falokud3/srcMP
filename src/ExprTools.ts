@@ -23,4 +23,13 @@ function hasAssignmentOperator(stmt: xml.Element) : boolean {
     }
 }
 
-export {hasAssignmentOperator}
+
+
+function hasAugAssignmentOperator(stmt: xml.Element) : boolean {
+    if (!hasAssignmentOperator(stmt)) return false;
+
+    const op = (stmt.get("xmlns:operator", XmlTools.ns) as xml.Element).text();
+    return op.length > 1;
+}
+
+export {hasAssignmentOperator, hasAugAssignmentOperator}

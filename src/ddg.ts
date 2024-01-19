@@ -1,3 +1,8 @@
+import * as libxmljs from 'libxmljs2'
+import * as XmlTools from './XmlTools.js'
+import assert from 'assert';
+
+
 // Directed Dependency Graph
 
 
@@ -145,4 +150,81 @@ class Node {
 
 }
 
-export {Node as DDG_Node, DirectedDependencyGraph}
+/**
+ * Takes a for loop xml element and builds a ddg from it. Throws an error
+ * if the passed element is not a for loop
+ * @param root the for xml element
+ * @returns DDG representingb the for loop
+ */
+function buildLoopDDG(root: libxmljs.Element) : DirectedDependencyGraph {
+    assert(root.name() === 'for');
+
+    const ddg = new DirectedDependencyGraph();
+    // go through all the declarations
+    const decl_statements = root.find(".//xmlns:decl", XmlTools.ns) as libxmljs.Element[]; 
+    decl_statements.forEach((decl) => {
+        // TODO: add clause for INIT
+        const type = (decl.get('./xmlns:type/xmlns:name', XmlTools.ns) as libxmljs.Element).text();
+        const name = (decl.get('./xmlns:name', XmlTools.ns) as libxmljs.Element).text();
+        ddg.addVertex(new Node(name));
+    });
+
+    // get all expressions
+        // filter for init and assignment operator
+    const expr_statements = root.find(".//xmlns:expr", XmlTools.ns) as libxmljs.Element[];
+    expr_statements.forEach((expr) => {
+
+        // check if expr has init parent
+        const parent = expr.parent() as libxmljs.Element;
+        if (parent.name() === 'init') {
+            // parent of <init> is <decl> 
+                // the first <name> child of <decl> is the 
+                // variable being declared
+            const target = parent.get('../xmlns:name', XmlTools.ns) as libxmljs.Element;
+
+            // all <name> children of the expr are variables to be added to ddg
+                // NOTE: unsure how constants appear as srcml
+                // NOTE: object dependencies won't work yet;
+            const vars = expr.find('./xmlns:name', XmlTools.ns) as libxmljs.Element[];
+            vars.forEach((variable) => {
+                ddg.addEdge( new Node(target.text()), new Node(variable.text()));
+            });
+        }
+
+        // check if expr has <operator>=</operator>
+        const operators = expr.find('./xmlns:operator', XmlTools.ns) as libxmljs.Element[];
+
+        // using for over .reduce to avoid looping through entire array
+            // unnecessarily
+        let isAssignment = false;
+        for (let i = 0; i < operators.length && !isAssignment; i++) {
+            isAssignment = (operators[i].text() === '=');
+        }
+        if (isAssignment) {
+            const variables = expr.find('./xmlns:name', XmlTools.ns) as libxmljs.Element[];
+            const target = variables[0];
+            variables.slice(1).forEach((source) => {
+                ddg.addEdge(new Node(target.text()), new Node(source.text()))
+            });
+        }
+
+    });
+
+    console.log(ddg.toString());
+
+    // TODO: treat array indices as variables
+    // TODO: object members
+
+    // variable usage through the name
+        // exception: method names have call parent
+        // exception: data types have type parent
+        // TODO: figure out how to isolate the name of an object without
+            // the method/attribute (vector.push_back())
+    return ddg;
+}
+
+function nameToNode(name: libxmljs.Element) : Node {
+    return new Node('');
+}
+
+export {DirectedDependencyGraph}

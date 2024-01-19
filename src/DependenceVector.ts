@@ -1,0 +1,6 @@
+
+class DependenceVector {
+
+}
+
+export {DependenceVector}
