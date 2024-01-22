@@ -2,3 +2,4 @@ node_modules/
 build/
 benchmarks/PolyBenchC-4.2.1/
 .DS_Store
+.vscode

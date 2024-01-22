@@ -1,4 +1,5 @@
 import * as xml from 'libxmljs2';
+import * as XmlTools from './XmlTools.js';
 
 class ArrayAccess {
 
@@ -20,6 +21,14 @@ class ArrayAccess {
         this.parent_stmt = parent_stmt;
     }
     
+    public getArrayDimensionality() : number {
+        return this.access_expr.find("xmlns:index", XmlTools.ns).length;
+    }
+
+    public getDimension(dimension: number) : xml.Element {
+        return this.access_expr.get(`xmlns:index[${dimension}]`, XmlTools.ns);
+    }
+
     // TODO: getters & setters
     public getAccessType() : string {
         return this.access_type;
@@ -32,8 +41,8 @@ class ArrayAccess {
     // mayble: get loop nest of enclosing list
 
     public toString(): string {
-        let ret: string = "";
-        ret += "Access Expression: " + this.access_expr.toString() + " ";
+        let ret: string = "[Array Acess]";
+        ret += "Access Expression: " + this.access_expr.text() + " ";
         ret += "Access Type: " + (this.access_type == ArrayAccess.write_access ? "Write" : "Read") + " ";
         return ret;
     }

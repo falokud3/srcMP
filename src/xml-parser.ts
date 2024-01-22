@@ -1,6 +1,7 @@
 import * as fs from 'fs';
 import * as libxmljs from 'libxmljs2';
 import * as LoopTools from './LoopTools.js'
+import * as XmlTools from './XmlTools.js'
 import * as DDFramework from './DDTFramework.js'
 
 // TODO: PARSE unit tag for namespaces
@@ -13,11 +14,8 @@ function autoparPass(root: libxmljs.Element) : void {
     // TODO: Handeling of nested loops
        // TODO: extracting only the outermost loops
     forLoops.forEach((forNode) => {
-
-    if (!LoopTools.isLoopEligible(forNode)) return;
-
+    // if (!LoopTools.isLoopEligible(forNode)) return;
     DDFramework.analyzeLoopForDependence(forNode);
-        
     });
     
 }

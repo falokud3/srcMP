@@ -13,9 +13,9 @@ function getEnclosingLoopNest(loopNode: xml.Element) : xml.Element[] {
     return loopNode.find("ancestor-or-self::xmlns:for", XmlTools.ns);
 }
 
-// gets the loops nested within this loop (does not include input loop)
+// gets the loops nested within this loop (includes input loop)
 function getInnerLoopNest(loopNode: xml.Element) : xml.Element[] {
-    return loopNode.find("descendant::xmlns:for", XmlTools.ns);
+    return loopNode.find("descendant-or-self::xmlns:for", XmlTools.ns);
 }
 
 // returns the intersection of two enclosing loop nests
@@ -27,8 +27,10 @@ function getCommonEnclosingLoopNest(loop: xml.Element, other_loop: xml.Element) 
 
 // returns the intersection of two loop nests
 function getCommonLoops(loopNest: xml.Element[], other_loopNest: xml.Element[]) : xml.Element[] {
-    return loopNest.filter((loopNode: xml.Element) => {
-        return other_loopNest.includes(loopNode);
+    return loopNest.filter((node: xml.Element) => {
+        return other_loopNest.some((inner) => {
+            return node.text() === inner.text()
+        });
     });
 }
 
@@ -45,7 +47,8 @@ function getArrayAccesses(loopNode: xml.Element) : Map<String, ArrayAccess[]> {
     indexNodes.forEach( (indexNode: xml.Element) => {
         const access_expr = <xml.Element> indexNode.parent();
         const parent_stmt = <xml.Element> access_expr.parent();
-        const enclosing_loop = loopNode.clone();
+        const enclosing_loops = parent_stmt.find("ancestor::xmlns:for", XmlTools.ns);
+        const enclosing_loop = <xml.Element> enclosing_loops[enclosing_loops.length - 1];
 
         // ? use filter() before forEach instead of continue
         // declarations are not array acceses
@@ -85,11 +88,16 @@ function getArrayAccesses(loopNode: xml.Element) : Map<String, ArrayAccess[]> {
                 access_expr, enclosing_loop, parent_stmt);
             array_accesses.push(aug_access);
         }
-    });
 
-    console.log(array_access_map);
+    });
 
     return array_access_map;
 }
 
-export {isLoopEligible, getArrayAccesses, getEnclosingLoopNest, getInnerLoopNest, getCommonEnclosingLoopNest, getCommonLoops};
+function getLoopIndexVariable(loopNode: xml.Element) : xml.Element {
+    const index_var: xml.Element = loopNode.get("xmlns:control/xmlns:incr/xmlns:expr/xmlns:name", XmlTools.ns);
+    return index_var;
+}
+
+export {isLoopEligible, getArrayAccesses, getEnclosingLoopNest, getInnerLoopNest,
+    getCommonEnclosingLoopNest, getCommonLoops, getLoopIndexVariable};
