@@ -1,5 +1,5 @@
 import * as xml from 'libxmljs2';
-import * as XmlTools from './XmlTools.js';
+import * as XmlTools from './util/XmlTools.js';
 
 class ArrayAccess {
 
@@ -38,10 +38,13 @@ class ArrayAccess {
         return this.enclosing_loop;
     }
 
+    public get parentStatement() : xml.Element {
+        return this.parent_stmt;
+    }
     // mayble: get loop nest of enclosing list
 
     public toString(): string {
-        let ret: string = "[Array Acess]";
+        let ret: string = "[Array Access] ";
         ret += "Access Expression: " + this.access_expr.text() + " ";
         ret += "Access Type: " + (this.access_type == ArrayAccess.write_access ? "Write" : "Read") + " ";
         return ret;

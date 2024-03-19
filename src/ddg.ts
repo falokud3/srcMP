@@ -1,5 +1,5 @@
 import * as libxmljs from 'libxmljs2'
-import * as XmlTools from './XmlTools.js'
+import * as XmlTools from './util/XmlTools.js'
 import assert from 'assert';
 
 
