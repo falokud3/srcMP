@@ -2,6 +2,7 @@ import * as xml from 'libxmljs2';
 import * as LoopTools from './util/LoopTools.js'
 import * as XmlTools from './util/XmlTools.js'
 import { ArrayAccess } from './ArrayAccess.js';
+import { CFGraph } from './ControlFlowGraph.js';
 
 class SubscriptPair {
     private subscript1: xml.Element;
@@ -28,10 +29,12 @@ class SubscriptPair {
         if (stmt1 == stmt2) {
             return this.access1.getAccessType() == ArrayAccess.read_access &&
                 this.access2.getAccessType() == ArrayAccess.write_access;
+        } else {
+            let ret: boolean;
+            //TODO: use caching system
+            const cfg = CFGraph.buildControlFlowGraph(this.enclosingLoops[this.enclosingLoops.length - 1]);
+            return cfg.isReachable(stmt1, stmt2);
         }
-
-        throw new Error("isReachable unfinished")
-
     }
 
 

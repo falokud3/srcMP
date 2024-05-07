@@ -9,12 +9,12 @@
 
 int main(){
 
-  float a[1000], b[1000];
-  int i;
-  
-  for (i=1; i<1000; i++) {
-    a[i]= b[i];
+  int x[] = {0, 1, 2};
+
+  for (int i = 0; i < 3; i++) {
+    x[i] = x[2];
+    x[1] = x[i];
   }
-	
-   return 0;
+  
+  return 5;
 }

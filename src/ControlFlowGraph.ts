@@ -2,6 +2,7 @@ import * as xml from 'libxmljs2';
 import * as XmlTools from './util/XmlTools.js'
 import { assert } from 'console';
 import { copyFile } from 'fs';
+import { RangeDomain, VariableRange } from './RangeDomain.js';
 
 // ! doesn't support labels and goto statements
 export class CFGraph {
@@ -57,22 +58,99 @@ export class CFGraph {
         newOrder.splice(0, 0, node);
     }
 
-    public topologicalSort(graph: CFGraph) {
+    public topologicalSort(root: CFNode = this.nodes[0]) {
         const newOrder: CFNode[] = [];
-        CFGraph.rTopologicalSort(graph.nodes[0], [], newOrder);
+        for (const node of this.nodes) {
+            node.newOrder = -1;
+        }
+
+        CFGraph.rTopologicalSort(root, [], newOrder);
 
         for (let i = 0; i < newOrder.length; i++) {
             newOrder[i].newOrder = i; 
         }
-        graph.nodes = newOrder;
+        // NOTE: Instead of creating a new array can sort on newOrder
+        this.nodes = newOrder;
+    }
+
+    public isReachable(stmt1: xml.Element, stmt2: xml.Element) : boolean {
+        
+        let from: CFNode = null;
+        let to: CFNode = null;
+
+        // ! HACKY AND BAD
+        const s1 = <xml.Element> stmt1.parent()
+        const s2 = <xml.Element> stmt2.parent()
+
+        for (const node of this.nodes) {
+            // ! POTENTIAL ISSUE WITH IDENTICAL STATEMENTS
+            if (node.xml.text() === s1.text()) from = node;
+
+            if (node.xml.text() === s2.text()) to = node;
+        }
+
+        if (!from || !to) throw new Error("Statement not found in CFG!");
+
+        this.topologicalSort(from);
+
+        return to.getOrder() > -1;
     }
 
     public static buildControlFlowGraph(src: xml.Element) : CFGraph {
         const graph = new CFGraph();
         const newGraph = CFGraph.buildGraph(src);
         graph.addAllNodes(newGraph, []);
-        graph.topologicalSort(graph);
+        // graph.topologicalSort(graph);
+        // graph.iterateToFixpoint(true);
+        // console.log(graph.toString())
+        // const newSrc = graph.substituteAll(src);
+        // graph.getRanges(); // REMOVE
         return graph;
+    }
+
+    private substituteAll(src: xml.Element) : xml.Element {
+        for (const node of this.nodes) {
+            // // ! NEED TO ESCAPE STRINGS IN .text()
+            // const srcNode = <xml.Element> src.get(`.//xmlns:${node.xml.name()}[text()="${node.xml.text()}"]`, XmlTools.ns)
+            // console.log(node.xml.text())
+            // if (srcNode) {
+            //     console.log("FOUND*: " + node.xml.name());
+            // } else {
+            //     console.log("NOT FOUND: " + node.xml.name());
+            // }
+
+            const srcNodes = <xml.Element[]> src.find(`.//xmlns:${node.xml.name()}`, XmlTools.ns);
+            let src_node: xml.Element = null
+            for (const srcNode of srcNodes) {
+                if (srcNode.text() === node.xml.text()) {
+                    src_node = node.xml;
+                    break;
+                }
+            }
+
+            const var_ranges = node.getRanges()
+
+            const src_vars = <xml.Element[]> src_node.find(".//xmlns:name", XmlTools.ns);
+
+            console.log(src_node.toString())
+            for (const variable of src_vars) {
+                const var_range = var_ranges.getRange(variable.text());
+                if (var_range && var_range.isConstant()) { // not LHS of Assignment
+                    const replace_node = new xml.Element(src.doc(), "literal", var_range.getLowerBound().toString());
+                    replace_node.attr("type", "number");
+                    if (variable.nextElement().name() === "operator" && variable.nextElement().text() === "=") {
+                        continue;
+                    } 
+                    console.log("SUBSTITUTION")
+                    variable.replace(replace_node);
+                }
+            }
+            console.log(src_node.toString())
+            console.log("=======")
+
+        }
+
+        return null;
     }
 
     private static buildGraph(src: xml.Element) : CFNode {
@@ -371,6 +449,59 @@ export class CFGraph {
         gotoNode.setConnectable(false);
         return gotoNode;
     }
+
+    public getRanges() : void {
+
+    }
+
+    // TODO: Review
+    public iterateToFixpoint(widen: boolean = false) : void {
+        const worklist: CFNode[] = [];
+
+        if (widen) {
+            worklist.push(this.nodes[0]);
+        } else {
+            for (const node of this.nodes) {
+                if (node.hasBackedge()) worklist.push(node);
+            }
+        }
+
+        while (worklist.length > 0) {
+            const index = CFGraph.getFirstTopoNodeIndex(worklist);
+            const node = worklist.splice(index, 1)[0];
+
+            const currRanges = new RangeDomain();
+            for (const pred of node.preds) {
+                if (pred.getRanges().isEmpty()) continue;
+                currRanges.unionRanges(pred.getRanges());
+            }
+            
+            const nodePrevRanges = node.getRanges();
+            // TODO: WIDEN/NARROW
+            // if (!nodePrevRanges.isEmpty() && node.hasBackedge()) {
+                
+            // }
+
+            if (nodePrevRanges.isEmpty() || !nodePrevRanges.equals(currRanges)) {
+                node.setRanges(currRanges);
+                node.updateRange();
+                for (const succ of node.succs) {
+                    worklist.push(succ);
+                }
+            }
+        }
+    }
+
+    public static getFirstTopoNodeIndex(list: CFNode[]) : number{
+        if (list.length < 1) return null;
+        let index: number = 0;
+        for (let i = 1; i < list.length; i++) {
+            if (list[i].getOrder() < list[index].getOrder()) {
+                index = i;
+            }
+        }
+        return index;
+    }
 }
 
 class CFNode {
@@ -378,9 +509,11 @@ class CFNode {
     private outEdges: CFNode[];
     private inEdges: CFNode[];
     private tail: CFNode[]; // used exclusively for build process then deleted
-    private order: number = -1;
+    private order: number = -1; // topological order
     private idNum: number;
     private connectable: boolean = true;
+    private ranges: RangeDomain;
+    private backedge: boolean;
 
     private static maxID: number = 1;
 
@@ -390,6 +523,7 @@ class CFNode {
         this.inEdges = [];
         this.tail = [];
         this.idNum = CFNode.maxID++;
+        this.ranges = new RangeDomain();
     }
 
     // this extending tail
@@ -446,8 +580,42 @@ class CFNode {
         return this.idNum;
     }
 
+    public getOrder() : number {
+        return this.order;
+    }
+
     public set newOrder(order: number) {
         this.order = order;
+    }
+
+    public get preds() : CFNode[] {
+        return this.inEdges;
+    }
+
+    public get succs() : CFNode[] {
+        return this.outEdges;
+    }
+
+    public getRanges() : RangeDomain {
+        return this.ranges;
+    }
+
+    public setRanges(newRanges: RangeDomain) : void {
+        this.ranges = newRanges;
+    }
+
+    public hasBackedge() : boolean {
+        if (this.backedge === undefined) this.setBackedge();
+        return this.backedge;
+    }
+
+    public setBackedge() : void {
+        for (const pred of this.inEdges) {
+            if (this.order < pred.order) {
+                this.backedge = true;
+                break;
+            }
+        }
     }
 
     public toString() : string {
@@ -459,7 +627,8 @@ class CFNode {
     public nodeInfoToString() : string {
         let ret = "";
         ret += `node${this.idNum} [label="#${this.order}\\n<${this.data.name()}>\\n`;
-        ret += `${this.data.text().trim()}\\n"]`
+        ret += `${this.data.text().trim()}\\n`;
+        ret += `${this.ranges.toString()}\\n"]`
         return ret;
     }
 
@@ -472,12 +641,37 @@ class CFNode {
             ret += `node${adj.idNum} `;
         }
 
-        for (const inNodes of this.inEdges) {
-            console.log(`node${inNodes.order} -> node${this.order}`);
-        }
-
         ret += "};"
         return ret;
+    }
+
+    // TODO: ALL OTHER CASES
+    public updateRange() : void {
+        if (this.data.name() === "expr_stmt") {
+            const expr = <xml.Element> this.data.childNodes().filter((xmlNode: xml.Node) => {
+                return xmlNode.type() === "element";
+            })[0];
+            const variable = <xml.Element> expr.childNodes().filter((xmlNode: xml.Node) => {
+                return xmlNode.type() === "element";
+            })[0];
+            const op = <xml.Element> expr.childNodes().filter((xmlNode: xml.Node) => {
+                return xmlNode.type() === "element";
+            })[1];
+
+            // TODO: restructure method around finding this operator and expand outword
+            if (op.name() === "operator" && op.text() === "=") {
+                const lit = op.nextElement();
+                if (lit.name() === "literal") {
+                    const val = Number(lit.text());
+                    const currRange = this.ranges.getRange(variable.text());
+                    if (currRange === undefined) {
+                        this.ranges.setRange(variable.text(), val, val);
+                    } else {
+                        this.ranges.unionRange(variable.text(), new VariableRange(variable.text(), val, val));
+                    }
+                }
+            }
+        }
     }
 
 }

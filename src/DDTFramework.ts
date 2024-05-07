@@ -7,7 +7,7 @@ import { DependenceVector, DependenceDir } from './DependenceVector.js';
 import { SubscriptPair } from './SubscriptPair.js';
 import * as cortex from '@cortex-js/compute-engine';
 import { RangeTest } from './RangeTest.js';
-
+import { BanerjeeTest } from './BanerjeeTest.js';
 
 // top level xml-parser call
 // TODO
@@ -37,7 +37,6 @@ function dataDependenceFramework(loopNode: xml.Element) : void {
             if (access_i.getAccessType() === ArrayAccess.read_access &&
                 access_j.getAccessType() === ArrayAccess.read_access) continue;
 
-
             // get common nest
             // NOTE: may not even need to get the 
             let relevantLoopNest: xml.Element[] = LoopTools.getCommonEnclosingLoopNest(
@@ -50,9 +49,24 @@ function dataDependenceFramework(loopNode: xml.Element) : void {
             const dvs: DependenceVector[] = [];
             let dependenceExists: boolean = testArrayAccessPair(access_i, access_j, 
                relevantLoopNest, dvs);
+            
+            if (dependenceExists) {
+               const source_stmt = <xml.Element> access_i.parentStatement.parent();
+               const sink_stmt = <xml.Element> access_j.parentStatement.parent();
+               const prev_dependencies = sink_stmt.attr("dependencies")
+               if (prev_dependencies) {
+                  if (!prev_dependencies.value().includes(source_stmt.text())) {
+                     sink_stmt.attr("dependencies", `${prev_dependencies.value()}${source_stmt.text()}`);
+                  }
+               } else {
+                  sink_stmt.attr("dependencies",source_stmt.text())
+               }
+               loopNode.attr("parallelizable", "false")
+            }
          }
       }
    }
+   // console.log(loopNode.toString())
 }
 
 
@@ -88,12 +102,14 @@ function testSubscriptBySubscript(access: ArrayAccess, other_access: ArrayAccess
 
       // for a dependency to exist, all subscripts must have a depndency
       for (let i = 0; i < partitions.length; i++) {
+         // if testPartition returns false then indepnence is proven
          if (!testPartition(partitions.at(i), dvs)) return false;
       }
 
    } else {
       // TODO: ALIAS NONSENSE
    }
+   // may be dependence
    return true;
 }
 
@@ -141,9 +157,7 @@ function testPartition(parition: SubscriptPair[], dvs: DependenceVector[]) : boo
       const complexity: number = pair.getComplexity();
 
       if (complexity === 0) {
-         ret ||= testZIV(pair);
-      } else if (complexity === 1) {
-         ret ||= testSIV(pair);
+         ret ||= testZIV(pair); // return false if independent
       } else {
          ret ||= testMIV(pair);
       }
@@ -182,7 +196,8 @@ function testSIV(pair: SubscriptPair) : boolean {
 // test MIV
 function testMIV(pair: SubscriptPair) : boolean {
 
-   const ddtest = new RangeTest(pair);
+   // const ddtest = new RangeTest(pair);
+   const ddtest = new BanerjeeTest(pair);
 
    // TODO: Add *,*,* dependene vector
 
@@ -198,7 +213,7 @@ function testMIV(pair: SubscriptPair) : boolean {
 }
    // test tree
 
-function testDependenceTree(ddtest: RangeTest): DependenceVector[] {
+function testDependenceTree(ddtest: RangeTest | BanerjeeTest): DependenceVector[] {
    const dv_list: DependenceVector[] = []
    const dv: DependenceVector = new DependenceVector(ddtest.subscriptPair.getEnclosingLoops())
 
@@ -208,7 +223,7 @@ function testDependenceTree(ddtest: RangeTest): DependenceVector[] {
    
 }
 
-function testTree(ddtest: RangeTest, dv: DependenceVector, pos: number, dv_list: DependenceVector[]) {
+function testTree(ddtest: RangeTest | BanerjeeTest, dv: DependenceVector, pos: number, dv_list: DependenceVector[]) {
    let loopNest = ddtest.subscriptPair.getEnclosingLoops();
    let loop = loopNest[pos];
    for (let dir = DependenceDir.less; dir <= DependenceDir.greater; dir++) {

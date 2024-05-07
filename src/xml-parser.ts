@@ -11,19 +11,19 @@ const namespaces = {'xmlns': 'http://www.srcML.org/srcML/src'}
 
   
 function autoparPass(root: libxmljs.Element) : void {
-    // const forLoops = root.find('//xmlns:for', namespaces) as libxmljs.Element[];
-    // // TODO: Handeling of nested loops
-    //    // TODO: extracting only the outermost loops
-    // forLoops.forEach((forNode: libxmljs.Element) => {
-    //     if (!LoopTools.isLoopEligible(forNode)) return;
-    //     DDFramework.analyzeLoopForDependence(forNode);
-    // });
+    const forLoops = root.find('//xmlns:for', namespaces) as libxmljs.Element[];
+    // TODO: Handeling of nested loops
+       // TODO: extracting only the outermost loops
+    forLoops.forEach((forNode: libxmljs.Element) => {
+        // if (!LoopTools.isLoopEligible(forNode)) return;
+        DDFramework.analyzeLoopForDependence(forNode);
+    });
+    console.log(root.toString())
 
-    const test = root.find("//xmlns:function", namespaces) as libxmljs.Element[];
-    for (const func of test) {
-        const graph = CFG.CFGraph.buildControlFlowGraph(func);
-        console.log(graph.toString());
-    }
+    // const test = root.find("//xmlns:function", namespaces) as libxmljs.Element[];
+    // for (const func of test) {
+    //     const graph = CFG.CFGraph.buildControlFlowGraph(func);
+    // }
     
 }
 
