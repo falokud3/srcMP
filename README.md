@@ -1,11 +1,11 @@
-# XML-Parallelization-Parser
+# SRCCETUS
 A program that parsers source code in the from of srcML XML and identifies opportunities for parallelization
 
 ## Compile
 `npx tsc`
 
 ## Execute
-`node build/xml-parser.js`
+`srccetus`
 
 ## Both
-`npx tsc ; node build/xml-parser.js`
+`npx tsc ; srccetus`
