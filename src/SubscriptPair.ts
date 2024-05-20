@@ -56,6 +56,16 @@ class SubscriptPair {
         return this.subscript1;
     }
 
+    public getAccessLine(access: number) : number {
+        // TODO: REMOVE MAGIC LITERAL
+        if (access === 1) {
+            return this.access1.parentStatement.line() - 1;
+        } else {
+            return this.access2.parentStatement.line() - 1;
+        }
+
+    }
+
     public getSubscript2() : xml.Element {
         return this.subscript2;
     }

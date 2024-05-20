@@ -9,6 +9,9 @@ import * as cortex from '@cortex-js/compute-engine';
 import { RangeTest } from './RangeTest.js';
 import { BanerjeeTest } from './BanerjeeTest.js';
 
+// !
+const XML_TAG_OFFSET = 1
+
 // top level xml-parser call
 // TODO
 function analyzeLoopForDependence(loopNode: xml.Element) : void {
@@ -52,21 +55,22 @@ function dataDependenceFramework(loopNode: xml.Element) : void {
             
             if (dependenceExists) {
                const source_stmt = <xml.Element> access_i.parentStatement.parent();
+               const source_stmt_line = source_stmt.line() - XML_TAG_OFFSET
                const sink_stmt = <xml.Element> access_j.parentStatement.parent();
                const prev_dependencies = sink_stmt.attr("dependencies")
                if (prev_dependencies) {
-                  if (!prev_dependencies.value().includes(source_stmt.text())) {
-                     sink_stmt.attr("dependencies", `${prev_dependencies.value()}${source_stmt.text()}`);
+                  if (!prev_dependencies.value().includes(String(source_stmt_line))) {
+                     sink_stmt.attr("dependencies", `${prev_dependencies.value()}, ${String(source_stmt_line)}`);
                   }
                } else {
-                  sink_stmt.attr("dependencies",source_stmt.text())
+                  sink_stmt.attr("dependencies", String(source_stmt_line))
                }
                loopNode.attr("parallelizable", "false")
             }
          }
       }
    }
-   // console.log(loopNode.toString())
+
 }
 
 
@@ -235,6 +239,7 @@ function testTree(ddtest: RangeTest | BanerjeeTest, dv: DependenceVector, pos: n
       if (!dv.containsDirection(DependenceDir.any) &&
          (!dv.isAllEqual() || ddtest.subscriptPair.isReachable())) {
          dv_list.push(dv.clone());
+         console.log(`[Banerjee Test] Dependence from line ${ddtest.subscriptPair.getAccessLine(1)} to line ${ddtest.subscriptPair.getAccessLine(2)}`);
       }
 
       // recursive base case

@@ -7,14 +7,21 @@
 #include <stdio.h>
 #include <math.h>
 
+int z = 4;
+
 int main(){
 
-  int x[] = {0, 1, 2};
+  int x;
 
-  for (int i = 0; i < 3; i++) {
-    x[i] = x[2];
-    x[1] = x[i];
+  if (true) {
+    x = 5;
+    x = x + 1;
+    // 3 = 2
+  } else {
+    x = 4;
+    x = 0;
   }
   
-  return 5;
+  return x;
 }
+

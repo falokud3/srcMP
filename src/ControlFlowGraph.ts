@@ -154,50 +154,51 @@ export class CFGraph {
     }
 
     private static buildGraph(src: xml.Element) : CFNode {
-        let copy = src.clone();
-        let type: string = copy.name();
+        let type: string = src.name();
         if (type === "function") {
-            return CFGraph.buildFunction(copy);
+            return CFGraph.buildFunction(src);
         } else if (type === "block") {
-            return CFGraph.buildBlock(copy);
-        } else if (type === "block") {
-            return CFGraph.buildUnit(copy);
+            return CFGraph.buildBlock(src);
+        } else if (type === "unit") {
+            return CFGraph.buildUnit(src);
         } else if (type === "condition") { 
-            return new CFNode(copy);
+            return new CFNode(src);
         } else if (type === "if_stmt") {
-            return CFGraph.buildIf(copy);
+            return CFGraph.buildIf(src);
         } else if (type === "switch") {
-            return CFGraph.buildSwitch(copy);
+            return CFGraph.buildSwitch(src);
         } else if (type === "while") {
-            return CFGraph.buildWhile(copy);
+            return CFGraph.buildWhile(src);
         } else if (type === "do") {
-            return CFGraph.buildDo(copy);
+            return CFGraph.buildDo(src);
         } else if (type === "for") {
-            return CFGraph.buildFor(copy);
+            return CFGraph.buildFor(src);
         } else if (type == "init") {
-            return new CFNode(copy);
+            return new CFNode(src);
         } else if (type == "incr") {
-            return new CFNode(copy);
+            return new CFNode(src);
         } else if (type === "break" || type === "continue") {
-            const ret = new CFNode(copy);
+            const ret = new CFNode(src);
             ret.setConnectable(false);
             CFGraph.loopJumps.push(ret);
             return ret;
         } else if (type === "return") {
-            const ret = new CFNode(copy);
+            const ret = new CFNode(src);
             ret.setConnectable(false);
             return ret;
         } else if (type === "case" || type === "default") {
-            return CFGraph.buildCase(copy);
+            return CFGraph.buildCase(src);
         } else if (type.includes("stmt") || type === "expr" || type == "decl") {
-            return new CFNode(copy);
+            return new CFNode(src);
         } else if (type === "label") {
-            return CFGraph.buildLabel(copy);
+            return CFGraph.buildLabel(src);
         } else if (type === "goto") {
-            return CFGraph.buildGoto(copy);
+            return CFGraph.buildGoto(src);
+        } else if (type === "comment") {
+            return null;
         } else {
-            throw new Error("Unexpected Element: " + type);
-            // return null;
+            console.error("Unexpected Element: " + type);
+            return null;
         }
     }
 
@@ -211,8 +212,15 @@ export class CFGraph {
         const children = <xml.Element[]> blockContent.childNodes().filter((xmlNode: xml.Node) => {
             return xmlNode.type() === "element";
         });
+
         for (const child of children) {
+            // TODO: Skippable Nodes Refactor
+            if (child.name() === "function") continue;
+
             let childnode = CFGraph.buildGraph(child);
+
+            if (!childnode) continue;
+
             if (!ret) {
                 ret = childnode;
                 continue;
@@ -231,13 +239,18 @@ export class CFGraph {
 
     private static buildUnit(unit: xml.Element) : CFNode {
         const children = <xml.Element[]> unit.childNodes().filter((xmlNode: xml.Node) => {
-            // NOTE: UNTESTED
-            return xmlNode.type() === "element" && xmlNode.namespaces.length === 1;
+            return xmlNode.type() === "element";
         });
         let ret: CFNode = null;
 
         for (const child of children) {
+            // TODO: Skippable Nodes Refactor
+            if (child.name() === "function") continue;
+
             let childnode = CFGraph.buildGraph(child);
+
+            if (!childnode) continue;
+
             if (!ret) {
                 ret = childnode;
                 continue;
@@ -269,7 +282,7 @@ export class CFGraph {
         const firstBlock = CFGraph.buildBlock(firstBlockXml);
 
         CFNode.connectNodes(firstCond, firstBlock);
-        tail.push(firstBlock);
+        tail.push(...firstBlock.getTail());
 
         let cond = firstCond;
         while (ifXml = ifXml.nextElement()) {
@@ -284,7 +297,7 @@ export class CFGraph {
                 cond = newCond;
             }
             cond.addAdjacent(blockNode);
-            tail.push(blockNode);
+            tail.push(...blockNode.getTail());
         }
 
         if (!XmlTools.contains(ifStmt, "./xmlns:else", XmlTools.ns)) tail.push(cond);
@@ -299,7 +312,10 @@ export class CFGraph {
         let curr = caseStmt;
         while (curr = curr.nextElement()) {
             if (curr.name() === "case" || curr.name() === "default") break;
+            // TODO: Skippable Nodes Refactor
+            if (curr.name() === "function") continue;
             const currNode = CFGraph.buildGraph(curr);
+            if (!currNode) continue;
             CFNode.connectNodes(caseNode, currNode);
             if (curr.name() === "break") {
                 currNode.setConnectable(true);
