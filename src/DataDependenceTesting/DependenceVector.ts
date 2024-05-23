@@ -1,26 +1,26 @@
-import * as xml from 'libxmljs2'
+import * as Xml from '../Xml/Xml.js'
 
 class DependenceVector {
 
 
-    private directionVector: Map<xml.Element, number> = new Map<xml.Element, number>();
+    private directionVector: Map<Xml.Element, number> = new Map<Xml.Element, number>();
     private dirVec: Map<string, number> = new Map<string, number>();
 
-    public constructor(loop_nest: xml.Element[] = []) {
-        loop_nest.forEach( (loop: xml.Element) => {
+    public constructor(loop_nest: Xml.Element[] = []) {
+        loop_nest.forEach( (loop: Xml.Element) => {
             this.directionVector.set(loop, Direction.any);
-            this.dirVec.set(loop.text(), Direction.any)
+            this.dirVec.set(loop.text, Direction.any)
         });
     }
 
-    public setDirection(loop: xml.Element, dir: Direction) {
+    public setDirection(loop: Xml.Element, dir: Direction) {
         this.directionVector.set(loop, dir);
-        this.dirVec.set(loop.text(), dir)
+        this.dirVec.set(loop.text, dir)
     }
 
-    public getDirection(loop: xml.Element, string_version: boolean) {
+    public getDirection(loop: Xml.Element, string_version: boolean) {
         if (string_version) {
-            return this.dirVec.get(loop.text());
+            return this.dirVec.get(loop.text);
         } else {
             return this.directionVector.get(loop);
         }

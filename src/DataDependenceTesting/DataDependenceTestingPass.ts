@@ -1,20 +1,109 @@
 // Data Dependence Test Framework
-import * as xml from 'libxmljs2'
-import * as LoopTools from './util/LoopTools.js'
-import * as XmlTools from './util/XmlTools.js'
+import * as Xml from '../Xml/Xml.js'
+
 import { ArrayAccess } from './ArrayAccess.js';
 import { DependenceVector, DependenceDir } from './DependenceVector.js';
 import { SubscriptPair } from './SubscriptPair.js';
-import * as cortex from '@cortex-js/compute-engine';
+
 import { RangeTest } from './RangeTest.js';
 import { BanerjeeTest } from './BanerjeeTest.js';
+import * as ComplexMath from '../ComplexMath.js'
+import { DataDependenceGraph } from './DataDependenceGraph.js';
+import * as AliasAnalysis from './AliasAnalysis.js'
 
-// !
-const XML_TAG_OFFSET = 1
+
+export function run(root: Xml.Element) : void {
+
+   const dataDepGraph = new DataDependenceGraph();
+
+   AliasAnalysis.run();
+
+   getTestableLoops(root);
+
+   return;
+
+   // ExtractOutermostDependenceTestEligibleLoops
+
+
+   // for each loop
+      // analyze for dependences
+      // add arcs to ddg
+
+   // return DDG
+
+
+   const forLoops = <Xml.Loop[]> root.find('//xmlns:for');
+
+   // TODO: Handeling of nested loops
+      // TODO: extracting only the outermost loops
+   forLoops.forEach((forNode: Xml.Loop) => {
+       analyzeLoopForDependence(forNode);
+   });
+}
+
+function getTestableLoops(root: Xml.Element) : Xml.Loop[] {
+   const loopElements = <Xml.Loop[]> root.find(".//xmlns:for[count(ancestor::xmlns:for)=0]")
+
+
+
+   loopElements.forEach((loopNode) => {
+      isLoopTestEligible(loopNode);
+      // console.log();
+      // console.log(loopNode.libraryXmlObject.toString());
+   });
+
+   // filter for eligibility
+
+   return loopElements;
+}
+
+function isLoopTestEligible(loop: Xml.Loop) : boolean {
+
+   if(!isCanonicalLoop(loop))
+
+   return true;
+}
+
+/**
+ * Returns true if the loop is in canonical form 
+ * @param loop 
+ * @see https://www.openmp.org/spec-html/5.1/openmpsu45.html
+ */
+function isCanonicalLoop(loop: Xml.Loop) : boolean {
+   return initExpressionCheck(loop) !== null;
+}
+
+/**
+ * Returns the loop index variable if the initilization expression has one of 
+ * the following forms (null otherwise):
+ * * var = lb
+ * * integer-type var = lb
+ * @param loop 
+ */
+function initExpressionCheck(loop: Xml.Loop) : Xml.Element {
+   const init = loop.getInitialization();
+   if (init.children.length != 1) return null;    // int i, j = 0
+
+   const child = init.child(0);
+   const variableLocation = child.name === "decl" ? 1 : 0;
+   const variable = child.child(variableLocation);
+
+   if (Xml.isComplexName(variable)) return null;
+   
+   console.log(variable.libraryXmlObject.toString());
+   // j = 0
+   if (child.name === "expr") {
+      
+   } 
+   // int j = 0
+   else if (child.name === "decl") {
+      
+   }
+}
 
 // top level xml-parser call
 // TODO
-function analyzeLoopForDependence(loopNode: xml.Element) : void {
+function analyzeLoopForDependence(loopNode: Xml.Loop) : void {
    // ? build/return DDG
    dataDependenceFramework(loopNode);
 
@@ -22,10 +111,10 @@ function analyzeLoopForDependence(loopNode: xml.Element) : void {
 
 // runDDTest
 // ? build/return DDG
-function dataDependenceFramework(loopNode: xml.Element) : void {
+function dataDependenceFramework(loopNode: Xml.Loop) : void {
    const array_access_map: Map<String, ArrayAccess[]> = 
-      LoopTools.getArrayAccesses(loopNode);
-   const innerLoopNest = LoopTools.getInnerLoopNest(loopNode);
+      loopNode.getArrayAccesses();
+   const innerLoopNest = loopNode.getInnerLoopNest();
    // TODO: INITIALIZE DDG
    for (const arrayName of array_access_map.keys()) {
       const array_accesses = array_access_map.get(arrayName);
@@ -42,10 +131,9 @@ function dataDependenceFramework(loopNode: xml.Element) : void {
 
             // get common nest
             // NOTE: may not even need to get the 
-            let relevantLoopNest: xml.Element[] = LoopTools.getCommonEnclosingLoopNest(
-               access_i.getEnclosingLoop(), access_j.getEnclosingLoop());
+            let relevantLoopNest = access_i.getEnclosingLoop().getCommonEnclosingLoopNest(access_j.getEnclosingLoop());
             // handle edge where loop being MT is not the outermost loop
-            relevantLoopNest = LoopTools.getCommonLoops(relevantLoopNest, innerLoopNest);
+            relevantLoopNest = Xml.Loop.getCommonLoops(relevantLoopNest, innerLoopNest);
 
             // TODO: Substitute Range Info
 
@@ -54,22 +142,24 @@ function dataDependenceFramework(loopNode: xml.Element) : void {
                relevantLoopNest, dvs);
             
             if (dependenceExists) {
-               const source_stmt = <xml.Element> access_i.parentStatement.parent();
-               const source_stmt_line = source_stmt.line() - XML_TAG_OFFSET
-               const sink_stmt = <xml.Element> access_j.parentStatement.parent();
-               const prev_dependencies = sink_stmt.attr("dependencies")
+               const source_stmt = access_i.parentStatement.parent;
+               const source_stmt_line = source_stmt.line
+               const sink_stmt = access_j.parentStatement.parent;
+               const prev_dependencies = sink_stmt.getAttribute("dependencies")
                if (prev_dependencies) {
-                  if (!prev_dependencies.value().includes(String(source_stmt_line))) {
-                     sink_stmt.attr("dependencies", `${prev_dependencies.value()}, ${String(source_stmt_line)}`);
+                  if (!prev_dependencies.includes(String(source_stmt_line))) {
+                     sink_stmt.setAttribute("dependencies", `${prev_dependencies}, ${String(source_stmt_line)}`);
                   }
                } else {
-                  sink_stmt.attr("dependencies", String(source_stmt_line))
+                  sink_stmt.setAttribute("dependencies", String(source_stmt_line))
                }
-               loopNode.attr("parallelizable", "false")
+               loopNode.setAttribute("parallelizable", "false")
             }
          }
       }
    }
+
+   console.log(loopNode.libraryXmlObject.toString());
 
 }
 
@@ -77,7 +167,7 @@ function dataDependenceFramework(loopNode: xml.Element) : void {
 //test AccessPair
 // dvs is an OUT variable
 function testArrayAccessPair(access: ArrayAccess, other_access: ArrayAccess,
-   loopNest: xml.Element[], dvs: DependenceVector[]) : boolean {
+   loopNest: Xml.Element[], dvs: DependenceVector[]) : boolean {
    let ret: boolean = false;
    // NOTE : THIS IS WHERE TO PICK DEPENDENCE TEST
    ret = testSubscriptBySubscript(access, other_access, loopNest, dvs);
@@ -86,7 +176,7 @@ function testArrayAccessPair(access: ArrayAccess, other_access: ArrayAccess,
 
 // dvs is an OUT variable
 function testSubscriptBySubscript(access: ArrayAccess, other_access: ArrayAccess,
-   loopNest: xml.Element[], dvs: DependenceVector[]) : boolean {
+   loopNest: Xml.Element[], dvs: DependenceVector[]) : boolean {
    if (access.getArrayDimensionality() == other_access.getArrayDimensionality()) {
       const pairs: SubscriptPair[] = [];
       const dimensions = access.getArrayDimensionality();
@@ -127,16 +217,16 @@ function partitionPairs(pairs: SubscriptPair[]) : SubscriptPair[][] {
    }) 
 
    const loopNest = pairs[0].getEnclosingLoops();
-   loopNest.forEach((loopNode: xml.Element) => {
-      const loop_indexVar = LoopTools.getLoopIndexVariable(loopNode).text();
+   loopNest.forEach((loopNode: Xml.Loop) => {
+      const loop_indexVar = loopNode.getLoopIndexVariableName().text;
       let k: number;
       for (let i = 0; i < partitions.length; i++) {
          // check if parition has loop index variable
          const hasLoopIndex: boolean = partitions.at(i).some((pair: SubscriptPair) => {
             const sub1 = pair.getSubscript1();
             const sub2 = pair.getSubscript2();
-            return XmlTools.containsName(sub1, loop_indexVar) ||
-               XmlTools.containsName(sub2, loop_indexVar);
+            return sub1.containsName(loop_indexVar) ||
+               sub2.containsName(loop_indexVar);
          });
 
          if (hasLoopIndex) {
@@ -162,6 +252,8 @@ function testPartition(parition: SubscriptPair[], dvs: DependenceVector[]) : boo
 
       if (complexity === 0) {
          ret ||= testZIV(pair); // return false if independent
+      } else if (complexity === 1) {
+         ret ||= testSIV(pair);
       } else {
          ret ||= testMIV(pair);
       }
@@ -169,31 +261,24 @@ function testPartition(parition: SubscriptPair[], dvs: DependenceVector[]) : boo
    });
    return ret;
 }
-// test ZIV
+
 function testZIV(pair: SubscriptPair) : boolean {
-   const expr1 = (pair.getSubscript1().child(1) as xml.Element).text();
-   const expr2 = (pair.getSubscript2().child(1) as xml.Element).text();
+   const expr1 = pair.getSubscript1().child(1).text;
+   const expr2 = pair.getSubscript2().child(1).text;
 
-   const subtraction = `${expr1} - (${expr2})`
-   
-   const ce = new cortex.ComputeEngine();
+   const exprString = `${expr1} - (${expr2})`
+   const expression = ComplexMath.simplify(exprString);
 
-   const simp_sub = ce.parse(subtraction).simplify();
-
-
-   // NOTE: if .isZERO is undefined then the cortexEngine couldn't determine
-   // * if the value was zero due to variables
-
-   if (simp_sub.isZero === undefined) {
-      // can be more specific with range analysis
-      return true; //conserative
+   if (!expression.isZero) {
+      console.log("[testZIV] Could not determine independnece due to symoblic constants");
+      return true;
    } 
 
-   return simp_sub.isZero;
+   return expression.isZero;
 }
-// test SIV
-function testSIV(pair: SubscriptPair) : boolean {
 
+function testSIV(pair: SubscriptPair) : boolean {
+   console.log(pair);
    return true;
 }
 

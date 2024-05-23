@@ -7,7 +7,7 @@
     "test": "tests"
   },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "lint": "eslint --ext .ts --ignore-path .gitignore ."
   },
   "bin": {
     "srccetus": "./build/index.js"
@@ -16,8 +16,11 @@
   "author": "",
   "license": "ISC",
   "devDependencies": {
+    "@eslint/js": "^9.3.0",
     "@types/node": "^20.8.6",
-    "typescript": "^5.2.2"
+    "eslint": "^8.57.0",
+    "typescript": "^5.4.5",
+    "typescript-eslint": "^7.10.0"
   },
   "dependencies": {
     "@cortex-js/compute-engine": "^0.23.1",

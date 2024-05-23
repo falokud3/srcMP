@@ -1,58 +1,40 @@
 #!/usr/bin/env node
+import * as Xml from './Xml/Xml.js'
+import * as DDT from './DataDependenceTesting/DataDependenceTestingPass.js'
 
-import * as fs from 'fs';
-import * as libxmljs from 'libxmljs2';
-import * as LoopTools from './util/LoopTools.js'
-import * as XmlTools from './util/XmlTools.js'
-import * as DDFramework from './DDTFramework.js'
-import * as CFG from './ControlFlowGraph.js'
 import { Command } from 'commander'
+import { execSync } from 'child_process';
 
-import { exec } from 'child_process';
 
-// TODO: PARSE unit tag for namespaces
-const namespaces = {'xmlns': 'http://www.srcML.org/srcML/src'}
-  
-function autoparPass(root: libxmljs.Element) : void {
-    // const forLoops = root.find('//xmlns:for', namespaces) as libxmljs.Element[];
-    // TODO: Handeling of nested loops
-       // TODO: extracting only the outermost loops
-    // forLoops.forEach((forNode: libxmljs.Element) => {
-        // if (!LoopTools.isLoopEligible(forNode)) return;
-        // DDFramework.analyzeLoopForDependence(forNode);
-    // });
-    // console.log(root.toString())
 
-    const test = root.find("//xmlns:function", namespaces) as libxmljs.Element[];
-    for (const func of test) {
-        const graph = CFG.CFGraph.buildControlFlowGraph(func);
-        console.log(graph.toString());
-    }
+function runCompiler(xmlRoot: Xml.Element) {
+    // TODO: PARSE unit tag for namespaces
+
+    DDT.run(xmlRoot);
     
 }
 
-function begin_parse(srcPath: string) {
-
+/**
+ * Converts file contents to an Xml Object
+ * * Program assumes that .xml files passed to program are srcml applied to one file
+ * @param srcPath the path to the file as a string
+ * @returns an xml object representing the file contents
+ */
+function getFileXml(srcPath: string) : Xml.Element {
     const fileExtension = srcPath.substring(srcPath.lastIndexOf("."))
     
-    // * Assumes that .xml passed to program srcml if not the program breaks
     if (fileExtension !== ".xml") {
-        exec(`srcml ${srcPath}`, (error, stdout, stderr) => {
-            if (error) {
-                console.error(`exec error: ${error}`);
-                return;
-            }
-
-            const xmlDoc = libxmljs.parseXmlString(stdout);
-            autoparPass(xmlDoc.root());
-          });
+        const buffer = execSync(`srcml ${srcPath}`, {timeout: 10000});
+        return Xml.parseXmlString(buffer.toString());
     } else {
-        const xmlDoc = libxmljs.parseXmlString(fs.readFileSync(srcPath).toString());
-        autoparPass(xmlDoc.root());
+        return Xml.parseXmlFile(srcPath);
     }
-    
 }
 
+/**
+ * Handles command line args and begins compiler run
+ * @returns exit code
+ */
 function main() : number {
     const program = new Command();
 
@@ -65,7 +47,7 @@ function main() : number {
 
     for (const inputFile of program.args) {
         try {
-            begin_parse(inputFile);
+            runCompiler(getFileXml(inputFile));
         } catch (error) {
             console.error(inputFile + ": " + error.message + "(" + error.name + ")");
             return 1;

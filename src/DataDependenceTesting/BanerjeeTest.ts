@@ -1,14 +1,13 @@
-import { DependenceVector } from "./DependenceVector";
-import { SubscriptPair } from "./SubscriptPair";
-import * as xml from 'libxmljs2';
-import * as XmlTools from './util/XmlTools.js'
+import { DependenceVector } from './DependenceVector';
+import { SubscriptPair } from './SubscriptPair.js';
+import * as Xml from '../Xml/Xml.js';
 
 
 
 class BanerjeeTest {
-    private subscript1: xml.Element;
-    private subscript2: xml.Element;
-    private loopnest: xml.Element[];
+    private subscript1: Xml.Element;
+    private subscript2: Xml.Element;
+    private loopnest: Xml.Element[];
     private pair: SubscriptPair;
     private bounds: Map<string, number[]>;
     private const1;
@@ -39,11 +38,11 @@ class BanerjeeTest {
         // get loop index variables
         const idList = []
         for (const loop of this.loopnest) {
-            const decl = <xml.Element> loop.get("./xmlns:control/xmlns:init/xmlns:decl", XmlTools.ns);
-            // const coeff_node = <xml.Element> decl.get("./xmlns:init/xmlns:expr/xmlns:literal", XmlTools.ns);
-            // const coeff = parseInt(coeff_node.text());
-            const index_node = <xml.Element> decl.get("./xmlns:name", XmlTools.ns);
-            idList.push(index_node.text())
+            const decl = loop.get("./xmlns:control/xmlns:init/xmlns:decl", Xml.ns);
+            // const coeff_node = <Xml.Element> decl.get("./xmlns:init/xmlns:expr/xmlns:literal", Xml.ns);
+            // const coeff = parseInt(coeff_node.text);
+            const index_node = decl.get("./xmlns:name", Xml.ns);
+            idList.push(index_node.text)
 
         }
 
@@ -60,18 +59,18 @@ class BanerjeeTest {
             const A = 1;
             const B = 1;
 
-            const up_node = <xml.Element> this.loopnest[i].get("./xmlns:control/xmlns:condition/xmlns:expr/xmlns:literal", XmlTools.ns);
-            const U = parseInt(up_node.text());
+            const up_node = this.loopnest[i].get("./xmlns:control/xmlns:condition/xmlns:expr/xmlns:literal", Xml.ns);
+            const U = parseInt(up_node.text);
             
-            const decl = <xml.Element> this.loopnest[i].get("./xmlns:control/xmlns:init/xmlns:decl", XmlTools.ns);
-            const coeff_node = <xml.Element> decl.get("./xmlns:init/xmlns:expr/xmlns:literal", XmlTools.ns);
-            const L = parseInt(coeff_node.text());
+            const decl = this.loopnest[i].get("./xmlns:control/xmlns:init/xmlns:decl", Xml.ns);
+            const coeff_node = decl.get("./xmlns:init/xmlns:expr/xmlns:literal", Xml.ns);
+            const L = parseInt(coeff_node.text);
 
 
             // ! FIX
             const N = 1;
 
-            const bounds = []
+            const bounds: number[] = []
 
             Math.min(A, 0);
 
@@ -99,15 +98,15 @@ class BanerjeeTest {
                     Math.max(A-Math.min(B, 0), 0)*(U-L-N) +
                     (A-B)*L + A*N);
 
-            this.bounds.set(this.loopnest[i].text(), bounds);
+            this.bounds.set(this.loopnest[i].text, bounds);
         }
 
     }
 
-    public getConstCoeff(subscript: xml.Element) : number {
-        const lit = <xml.Element> subscript.get("./xmlns:expr/xmlns:literal", XmlTools.ns);
+    public getConstCoeff(subscript: Xml.Element) : number {
+        const lit = subscript.get("./xmlns:expr/xmlns:literal", Xml.ns);
         if (lit) {
-            const number = parseInt(lit.text())
+            const number = parseInt(lit.text)
             return number
         }
         return 0;
@@ -128,7 +127,7 @@ class BanerjeeTest {
 
         for (const loop of this.loopnest) {
             const dir = dv.getDirection(loop, true);
-            const loopBounds = this.bounds.get(loop.text());
+            const loopBounds = this.bounds.get(loop.text);
 
             LB += loopBounds[BanerjeeTest.LB];
             UB += loopBounds[BanerjeeTest.UB];

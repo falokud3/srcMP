@@ -1,5 +1,5 @@
-import { DependenceVector } from "./DependenceVector";
-import { SubscriptPair } from "./SubscriptPair";
+import { DependenceVector } from './DependenceVector';
+import { SubscriptPair } from './SubscriptPair';
 
 class RangeTest {
 

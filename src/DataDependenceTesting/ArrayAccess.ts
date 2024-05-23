@@ -1,5 +1,4 @@
-import * as xml from 'libxmljs2';
-import * as XmlTools from './util/XmlTools.js';
+import * as Xml from '../Xml/Xml.js'
 
 class ArrayAccess {
 
@@ -9,12 +8,12 @@ class ArrayAccess {
     public static readonly read_access: string = "Read";
 
     private access_type: string;
-    private access_expr: xml.Element;
-    private enclosing_loop: xml.Element;
-    private parent_stmt: xml.Element;
+    private access_expr: Xml.Element;
+    private enclosing_loop: Xml.Loop;
+    private parent_stmt: Xml.Element;
      
-    constructor(access_type: string, access_expr: xml.Element,
-        enclosing_loop: xml.Element, parent_stmt: xml.Element) {
+    constructor(access_type: string, access_expr: Xml.Element,
+        enclosing_loop: Xml.Loop, parent_stmt: Xml.Element) {
         this.access_type = access_type;
         this.access_expr = access_expr;
         this.enclosing_loop = enclosing_loop;
@@ -22,11 +21,11 @@ class ArrayAccess {
     }
     
     public getArrayDimensionality() : number {
-        return this.access_expr.find("xmlns:index", XmlTools.ns).length;
+        return this.access_expr.find("xmlns:index", Xml.ns).length;
     }
 
-    public getDimension(dimension: number) : xml.Element {
-        return this.access_expr.get(`xmlns:index[${dimension}]`, XmlTools.ns);
+    public getDimension(dimension: number) : Xml.Element {
+        return this.access_expr.get(`xmlns:index[${dimension}]`, Xml.ns);
     }
 
     // TODO: getters & setters
@@ -34,18 +33,18 @@ class ArrayAccess {
         return this.access_type;
     }
 
-    public getEnclosingLoop() : xml.Element {
+    public getEnclosingLoop() : Xml.Loop {
         return this.enclosing_loop;
     }
 
-    public get parentStatement() : xml.Element {
+    public get parentStatement() : Xml.Element {
         return this.parent_stmt;
     }
     // mayble: get loop nest of enclosing list
 
     public toString(): string {
         let ret: string = "[Array Access] ";
-        ret += "Access Expression: " + this.access_expr.text() + " ";
+        ret += "Access Expression: " + this.access_expr.text + " ";
         ret += "Access Type: " + (this.access_type == ArrayAccess.write_access ? "Write" : "Read") + " ";
         return ret;
     }

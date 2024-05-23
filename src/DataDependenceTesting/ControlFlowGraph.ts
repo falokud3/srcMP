@@ -1,7 +1,5 @@
-import * as xml from 'libxmljs2';
-import * as XmlTools from './util/XmlTools.js'
-import { assert } from 'console';
-import { copyFile } from 'fs';
+import * as Xml from '../Xml/Xml.js'
+import * as libxmljs2 from 'libxmljs2'
 import { RangeDomain, VariableRange } from './RangeDomain.js';
 
 // ! doesn't support labels and goto statements
@@ -73,20 +71,20 @@ export class CFGraph {
         this.nodes = newOrder;
     }
 
-    public isReachable(stmt1: xml.Element, stmt2: xml.Element) : boolean {
+    public isReachable(stmt1: Xml.Element, stmt2: Xml.Element) : boolean {
         
         let from: CFNode = null;
         let to: CFNode = null;
 
         // ! HACKY AND BAD
-        const s1 = <xml.Element> stmt1.parent()
-        const s2 = <xml.Element> stmt2.parent()
+        const s1 = stmt1.parent
+        const s2 = stmt2.parent
 
         for (const node of this.nodes) {
             // ! POTENTIAL ISSUE WITH IDENTICAL STATEMENTS
-            if (node.xml.text() === s1.text()) from = node;
+            if (node.xml.text === s1.text) from = node;
 
-            if (node.xml.text() === s2.text()) to = node;
+            if (node.xml.text === s2.text) to = node;
         }
 
         if (!from || !to) throw new Error("Statement not found in CFG!");
@@ -96,7 +94,7 @@ export class CFGraph {
         return to.getOrder() > -1;
     }
 
-    public static buildControlFlowGraph(src: xml.Element) : CFGraph {
+    public static buildControlFlowGraph(src: Xml.Element) : CFGraph {
         const graph = new CFGraph();
         const newGraph = CFGraph.buildGraph(src);
         graph.addAllNodes(newGraph, []);
@@ -108,21 +106,14 @@ export class CFGraph {
         return graph;
     }
 
-    private substituteAll(src: xml.Element) : xml.Element {
+    private substituteAll(src: Xml.Element) : Xml.Element {
         for (const node of this.nodes) {
-            // // ! NEED TO ESCAPE STRINGS IN .text()
-            // const srcNode = <xml.Element> src.get(`.//xmlns:${node.xml.name()}[text()="${node.xml.text()}"]`, XmlTools.ns)
-            // console.log(node.xml.text())
-            // if (srcNode) {
-            //     console.log("FOUND*: " + node.xml.name());
-            // } else {
-            //     console.log("NOT FOUND: " + node.xml.name());
-            // }
+            // // ! NEED TO ESCAPE STRINGS IN .text
 
-            const srcNodes = <xml.Element[]> src.find(`.//xmlns:${node.xml.name()}`, XmlTools.ns);
-            let src_node: xml.Element = null
+            const srcNodes = src.find(`.//xmlns:${node.xml.name}`, Xml.ns);
+            let src_node: Xml.Element = null
             for (const srcNode of srcNodes) {
-                if (srcNode.text() === node.xml.text()) {
+                if (srcNode.text === node.xml.text) {
                     src_node = node.xml;
                     break;
                 }
@@ -130,15 +121,16 @@ export class CFGraph {
 
             const var_ranges = node.getRanges()
 
-            const src_vars = <xml.Element[]> src_node.find(".//xmlns:name", XmlTools.ns);
+            const src_vars = src_node.find(".//xmlns:name", Xml.ns);
 
             console.log(src_node.toString())
             for (const variable of src_vars) {
-                const var_range = var_ranges.getRange(variable.text());
+                const var_range = var_ranges.getRange(variable.text);
                 if (var_range && var_range.isConstant()) { // not LHS of Assignment
-                    const replace_node = new xml.Element(src.doc(), "literal", var_range.getLowerBound().toString());
-                    replace_node.attr("type", "number");
-                    if (variable.nextElement().name() === "operator" && variable.nextElement().text() === "=") {
+                    const replaceLibXml = new libxmljs2.Element(src.libraryXmlObject.doc(), "literal", var_range.getLowerBound().toString());
+                    const replace_node = new Xml.Element(replaceLibXml);
+                    replace_node.setAttribute("type", "number");
+                    if (variable.nextElement.name === "operator" && variable.nextElement.text === "=") {
                         continue;
                     } 
                     console.log("SUBSTITUTION")
@@ -153,8 +145,8 @@ export class CFGraph {
         return null;
     }
 
-    private static buildGraph(src: xml.Element) : CFNode {
-        let type: string = src.name();
+    private static buildGraph(src: Xml.Element) : CFNode {
+        let type: string = src.name;
         if (type === "function") {
             return CFGraph.buildFunction(src);
         } else if (type === "block") {
@@ -202,20 +194,18 @@ export class CFGraph {
         }
     }
 
-    private static buildFunction(func: xml.Element) : CFNode {
-        return CFGraph.buildBlock(func.get("./xmlns:block", XmlTools.ns));
+    private static buildFunction(func: Xml.Element) : CFNode {
+        return CFGraph.buildBlock(func.get("./xmlns:block", Xml.ns));
     }
 
-    private static buildBlock(block: xml.Element) : CFNode {
-        const blockContent = <xml.Element> block.get("./xmlns:block_content", XmlTools.ns);
+    private static buildBlock(block: Xml.Element) : CFNode {
+        const blockContent = block.get("./xmlns:block_content", Xml.ns);
         let ret: CFNode = null;
-        const children = <xml.Element[]> blockContent.childNodes().filter((xmlNode: xml.Node) => {
-            return xmlNode.type() === "element";
-        });
+        const children = blockContent.children
 
         for (const child of children) {
             // TODO: Skippable Nodes Refactor
-            if (child.name() === "function") continue;
+            if (child.name === "function") continue;
 
             let childnode = CFGraph.buildGraph(child);
 
@@ -226,8 +216,8 @@ export class CFGraph {
                 continue;
             }
 
-            if (child.name() != "break" && child.name() != "continue" 
-                && child.name() != "return" && child.name() != "goto") {
+            if (child.name != "break" && child.name != "continue" 
+                && child.name != "return" && child.name != "goto") {
                 CFNode.connectNodes(ret, childnode);
             } else {
                 CFNode.connectNodes(ret, childnode, false);
@@ -237,15 +227,13 @@ export class CFGraph {
         return ret ? ret : new CFNode(blockContent);
     }
 
-    private static buildUnit(unit: xml.Element) : CFNode {
-        const children = <xml.Element[]> unit.childNodes().filter((xmlNode: xml.Node) => {
-            return xmlNode.type() === "element";
-        });
+    private static buildUnit(unit: Xml.Element) : CFNode {
+        const children = unit.children;
         let ret: CFNode = null;
 
         for (const child of children) {
             // TODO: Skippable Nodes Refactor
-            if (child.name() === "function") continue;
+            if (child.name === "function") continue;
 
             let childnode = CFGraph.buildGraph(child);
 
@@ -256,8 +244,8 @@ export class CFGraph {
                 continue;
             }
 
-            if (child.name() != "break" && child.name() != "continue" 
-                && child.name() != "return" && child.name() != "goto") {
+            if (child.name != "break" && child.name != "continue" 
+                && child.name != "return" && child.name != "goto") {
                 CFNode.connectNodes(ret, childnode);
             } else {
                 CFNode.connectNodes(ret, childnode, false);
@@ -271,26 +259,26 @@ export class CFGraph {
     // the chosen approach may mess up the tails on the internal conds, but
     // those aren't relevant to the build process and tails should not be used
     // for tree traversal
-    private static buildIf(ifStmt: xml.Element) : CFNode {
+    private static buildIf(ifStmt: Xml.Element) : CFNode {
         // initial if
         const tail: CFNode[] = [];
-        let ifXml = <xml.Element> ifStmt.childNodes()[0];
+        let ifXml = ifStmt.children[0];
 
-        const firstCondXml = <xml.Element> ifXml.get("./xmlns:condition", XmlTools.ns);
+        const firstCondXml = ifXml.get("./xmlns:condition", Xml.ns);
         const firstCond = CFGraph.buildGraph(firstCondXml);
-        const firstBlockXml = <xml.Element> ifXml.get("./xmlns:block", XmlTools.ns);
+        const firstBlockXml = ifXml.get("./xmlns:block", Xml.ns);
         const firstBlock = CFGraph.buildBlock(firstBlockXml);
 
         CFNode.connectNodes(firstCond, firstBlock);
         tail.push(...firstBlock.getTail());
 
         let cond = firstCond;
-        while (ifXml = ifXml.nextElement()) {
-            const blockXml = <xml.Element> ifXml.get("./xmlns:block", XmlTools.ns);
+        while (ifXml = ifXml.nextElement) {
+            const blockXml = ifXml.get("./xmlns:block", Xml.ns);
             const blockNode = CFGraph.buildBlock(blockXml);
 
-            //const ifXml = <xml.Element> ifStmt.childNodes()[i]; // <if> or <else>
-            const condXml = <xml.Element> ifXml.get("./xmlns:condition", XmlTools.ns);
+            //const ifXml = ifStmt.childNodes()[i]; // <if> or <else>
+            const condXml = ifXml.get("./xmlns:condition", Xml.ns);
             if (condXml) { // <else> has no <cond>
                 const newCond = CFGraph.buildGraph(condXml);
                 cond.addAdjacent(newCond);
@@ -300,24 +288,24 @@ export class CFGraph {
             tail.push(...blockNode.getTail());
         }
 
-        if (!XmlTools.contains(ifStmt, "./xmlns:else", XmlTools.ns)) tail.push(cond);
+        if (!ifStmt.contains("./xmlns:else", Xml.ns)) tail.push(cond);
 
         firstCond.setTail(tail); 
         return firstCond;
     }
     
-    private static buildCase(caseStmt: xml.Element) : CFNode {
+    private static buildCase(caseStmt: Xml.Element) : CFNode {
         const caseNode = new CFNode(caseStmt);
 
         let curr = caseStmt;
-        while (curr = curr.nextElement()) {
-            if (curr.name() === "case" || curr.name() === "default") break;
+        while (curr = curr.nextElement) {
+            if (curr.name === "case" || curr.name === "default") break;
             // TODO: Skippable Nodes Refactor
-            if (curr.name() === "function") continue;
+            if (curr.name === "function") continue;
             const currNode = CFGraph.buildGraph(curr);
             if (!currNode) continue;
             CFNode.connectNodes(caseNode, currNode);
-            if (curr.name() === "break") {
+            if (curr.name === "break") {
                 currNode.setConnectable(true);
                 CFGraph.loopJumps.pop();
                 break;
@@ -326,17 +314,16 @@ export class CFGraph {
         return caseNode;
     }
 
-    private static buildSwitch(switchStmt: xml.Element) : CFNode {
-        const condXml = <xml.Element> switchStmt.get("./xmlns:condition", XmlTools.ns);
+    private static buildSwitch(switchStmt: Xml.Element) : CFNode {
+        const condXml = switchStmt.get("./xmlns:condition", Xml.ns);
         const cond = CFGraph.buildGraph(condXml);
 
         let hasDefaultCase: boolean = false;
-        const casesXml = <xml.Element[]> (switchStmt.get("./xmlns:block/xmlns:block_content", XmlTools.ns) as xml.Element)
-            .childNodes()
-            .filter((node: xml.Node) => {
-                if (node.type() !== "element") return false;
-                if ((node as xml.Element).name() == "case") return true;
-                if ((node as xml.Element).name() == "default") {
+        const casesXml = switchStmt.get("./xmlns:block/xmlns:block_content", Xml.ns)
+            .children
+            .filter((node: Xml.Element) => {
+                if (node.name == "case") return true;
+                if (node.name == "default") {
                     hasDefaultCase = true;
                     return true;
                 }
@@ -345,7 +332,7 @@ export class CFGraph {
         let prevCase: CFNode = null;
         for (const caseXml of casesXml) {
             let caseNode: CFNode = CFGraph.buildCase(caseXml);
-            let hasBreak: boolean = caseNode.getTail()[0].xml.name() == "break";
+            let hasBreak: boolean = caseNode.getTail()[0].xml.name == "break";
 
             if (prevCase) CFNode.connectNodes(prevCase, caseNode);
             cond.addAdjacent(caseNode);
@@ -360,13 +347,13 @@ export class CFGraph {
         return cond;
     }
 
-    private static buildWhile(whileStmt: xml.Element) : CFNode {
+    private static buildWhile(whileStmt: Xml.Element) : CFNode {
 
-        const condition = <xml.Element> whileStmt.get("./xmlns:condition", XmlTools.ns);
+        const condition = whileStmt.get("./xmlns:condition", Xml.ns);
         const condNode = CFGraph.buildGraph(condition);
     
                 
-        const blockXml = <xml.Element> whileStmt.get("./xmlns:block", XmlTools.ns);
+        const blockXml = whileStmt.get("./xmlns:block", Xml.ns);
         const blockNode = CFGraph.buildBlock(blockXml);
         CFNode.connectNodes(condNode, blockNode);
         CFNode.connectNodes(blockNode, condNode, false);
@@ -379,22 +366,22 @@ export class CFGraph {
     }
 
     // ! Assume for loop always has two semicolons
-    private static buildFor(forstmt: xml.Element) : CFNode {
+    private static buildFor(forstmt: Xml.Element) : CFNode {
 
-        const initXml = <xml.Element> forstmt.get("./xmlns:control/xmlns:init", XmlTools.ns);
+        const initXml = forstmt.get("./xmlns:control/xmlns:init", Xml.ns);
         const initNode = CFGraph.buildGraph(initXml);
         
         // condition
-        const condition = <xml.Element> forstmt.get("./xmlns:control/xmlns:condition", XmlTools.ns);
+        const condition = forstmt.get("./xmlns:control/xmlns:condition", Xml.ns);
         const condNode = CFGraph.buildGraph(condition);
         CFNode.connectNodes(initNode, condNode);
 
         // body
-        const blockXml = <xml.Element> forstmt.get("./xmlns:block", XmlTools.ns);
+        const blockXml = forstmt.get("./xmlns:block", Xml.ns);
         const blockNode = CFGraph.buildBlock(blockXml);
         CFNode.connectNodes(initNode, blockNode);
 
-        const incrXML = <xml.Element> forstmt.get("./xmlns:control/xmlns:incr", XmlTools.ns);
+        const incrXML = forstmt.get("./xmlns:control/xmlns:incr", Xml.ns);
         const incrNode = CFGraph.buildGraph(incrXML);
         CFNode.connectNodes(blockNode, incrNode);
         CFNode.connectNodes(incrNode, condNode);
@@ -407,13 +394,13 @@ export class CFGraph {
         return initNode;
     }
 
-    private static buildDo(doStmt: xml.Element) : CFNode {
+    private static buildDo(doStmt: Xml.Element) : CFNode {
 
-        const blockXml = <xml.Element> doStmt.get("./xmlns:block", XmlTools.ns);
+        const blockXml = doStmt.get("./xmlns:block", Xml.ns);
         const blockNode = CFGraph.buildBlock(blockXml);
 
         // condition
-        const conditionXML = <xml.Element> doStmt.get("./xmlns:condition", XmlTools.ns);
+        const conditionXML = doStmt.get("./xmlns:condition", Xml.ns);
         const condNode = CFGraph.buildGraph(conditionXML);
 
         CFNode.connectNodes(blockNode, condNode);
@@ -427,7 +414,7 @@ export class CFGraph {
     private static resolveLoopJumps(enterNode: CFNode, exitNode: CFNode) {
         for (const jumpNode of CFGraph.loopJumps) {
             jumpNode.setConnectable(true);
-            if (jumpNode.xml.name() == "continue") {
+            if (jumpNode.xml.name == "continue") {
                 CFNode.connectNodes(jumpNode, enterNode);
             // break
             } else {
@@ -436,15 +423,15 @@ export class CFGraph {
         }
     }
 
-    private static buildLabel(labelStmt: xml.Element) : CFNode {
+    private static buildLabel(labelStmt: Xml.Element) : CFNode {
         const labelNode = new CFNode(labelStmt);
-        const labelNameXml = <xml.Element> labelStmt.get("./xmlns:name", XmlTools.ns);
-        this.labelNodes.set(labelNameXml.text(), labelNode);
+        const labelNameXml = labelStmt.get("./xmlns:name", Xml.ns);
+        this.labelNodes.set(labelNameXml.text, labelNode);
 
         for (let i = 0; i < CFGraph.gotoJumps.length; i++) {
             const gotoNode = CFGraph.gotoJumps[i];
-            const nodeLabelXml = <xml.Element> gotoNode.xml.get("./xmlns:name", XmlTools.ns);
-            if (nodeLabelXml.text() === labelNameXml.text()) {
+            const nodeLabelXml = gotoNode.xml.get("./xmlns:name", Xml.ns);
+            if (nodeLabelXml.text === labelNameXml.text) {
                 gotoNode.addAdjacent(labelNode);
                 CFGraph.gotoJumps.splice(i, 1);
                 i--;
@@ -453,10 +440,10 @@ export class CFGraph {
         return labelNode;
     }
 
-    private static buildGoto(gotoStmt: xml.Element) : CFNode {
+    private static buildGoto(gotoStmt: Xml.Element) : CFNode {
         const gotoNode = new CFNode(gotoStmt);
-        const labelNameXml = <xml.Element> gotoStmt.get("./xmlns:name", XmlTools.ns);
-        const labelNode = CFGraph.labelNodes.get(labelNameXml.text());
+        const labelNameXml = gotoStmt.get("./xmlns:name", Xml.ns);
+        const labelNode = CFGraph.labelNodes.get(labelNameXml.text);
         if (labelNode) {
             gotoNode.addAdjacent(labelNode);
         } else {
@@ -521,7 +508,7 @@ export class CFGraph {
 }
 
 class CFNode {
-    private data: xml.Element;
+    private data: Xml.Element;
     private outEdges: CFNode[];
     private inEdges: CFNode[];
     private tail: CFNode[]; // used exclusively for build process then deleted
@@ -533,7 +520,7 @@ class CFNode {
 
     private static maxID: number = 1;
 
-    public constructor(data: xml.Element) {
+    public constructor(data: Xml.Element) {
         this.data = data
         this.outEdges = [];
         this.inEdges = [];
@@ -588,7 +575,7 @@ class CFNode {
         return this.outEdges;
     }
 
-    public get xml() : xml.Element {
+    public get xml() : Xml.Element {
         return this.data;
     }
 
@@ -636,14 +623,14 @@ class CFNode {
 
     public toString() : string {
         let ret: string = "";
-        ret += this.idNum + " " + this.data.name();
+        ret += this.idNum + " " + this.data.name;
         return ret;
     }
 
     public nodeInfoToString() : string {
         let ret = "";
-        ret += `node${this.idNum} [label="#${this.order}\\n<${this.data.name()}>\\n`;
-        ret += `${this.data.text().trim()}\\n`;
+        ret += `node${this.idNum} [label="#${this.order}\\n<${this.data.name}>\\n`;
+        ret += `${this.data.text.trim()}\\n`;
         ret += `${this.ranges.toString()}\\n"]`
         return ret;
     }
@@ -663,27 +650,21 @@ class CFNode {
 
     // TODO: ALL OTHER CASES
     public updateRange() : void {
-        if (this.data.name() === "expr_stmt") {
-            const expr = <xml.Element> this.data.childNodes().filter((xmlNode: xml.Node) => {
-                return xmlNode.type() === "element";
-            })[0];
-            const variable = <xml.Element> expr.childNodes().filter((xmlNode: xml.Node) => {
-                return xmlNode.type() === "element";
-            })[0];
-            const op = <xml.Element> expr.childNodes().filter((xmlNode: xml.Node) => {
-                return xmlNode.type() === "element";
-            })[1];
+        if (this.data.name === "expr_stmt") {
+            const expr = this.data.children[0];
+            const variable = expr.children[0];
+            const op = expr.children[1];
 
             // TODO: restructure method around finding this operator and expand outword
-            if (op.name() === "operator" && op.text() === "=") {
-                const lit = op.nextElement();
-                if (lit.name() === "literal") {
-                    const val = Number(lit.text());
-                    const currRange = this.ranges.getRange(variable.text());
+            if (op.name === "operator" && op.text === "=") {
+                const lit = op.nextElement;
+                if (lit.name === "literal") {
+                    const val = Number(lit.text);
+                    const currRange = this.ranges.getRange(variable.text);
                     if (currRange === undefined) {
-                        this.ranges.setRange(variable.text(), val, val);
+                        this.ranges.setRange(variable.text, val, val);
                     } else {
-                        this.ranges.unionRange(variable.text(), new VariableRange(variable.text(), val, val));
+                        this.ranges.unionRange(variable.text, new VariableRange(variable.text, val, val));
                     }
                 }
             }

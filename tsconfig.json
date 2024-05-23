@@ -1,9 +1,15 @@
 {
   "compilerOptions": {
-    "target": "ES6", // specifices the version of JS
-    "outDir": "build", // specifices the outptut directory
-    "moduleResolution": "Bundler", // similar to compilerPath settings; needed for ts to find module
-    "module": "ES2015",
-    "sourceMap": true
-  }
+    "outDir": "build",
+    "target": "ES6",
+
+    "module": "ES2015", // picked to match Bundler
+    "moduleResolution": "Bundler", // loose rules to acoomodate packages
+
+    "sourceMap": true, // makes debugger work
+
+    "noImplicitAny": true, // added compiler warnings
+  },
+  "include": ["src"],
+  "exclude": ["node_modules"],
 }
