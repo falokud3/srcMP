@@ -34,9 +34,25 @@ export class Loop extends Element {
         return Loop.getCommonLoops(loopNest, other_loopNest);
     }
 
-    public getInitialization() : Xml.Element {
+    public get initialization() : Xml.Element {
         assert(this.name === "for")
-        return this.get("xmlns:control/xmlns:init", Xml.ns);
+        return this.get("./xmlns:control/xmlns:init");
+    }
+
+    public get condition() : Xml.Element {
+        // ! Getting Other loops condition left unimplemented
+        assert(this.name === "for") 
+        return this.get("./xmlns:control/xmlns:condition");
+    }
+
+    public get increment() : Xml.Element {
+        assert(this.name === "for")
+        return this.get("./xmlns:control/xmlns:incr");
+    }
+
+    public get body() : Xml.Element {
+        assert(this.name === "for")
+        return this.get("./xmlns:block/xmlns:block_content");
     }
 
     public getLoopIndexVariableName() : Xml.Element {

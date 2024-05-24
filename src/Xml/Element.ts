@@ -69,15 +69,24 @@ export class Element {
     }
 
     /**
+     * Returns the previous sibling element or null
+     */
+    public get prevElement() : Element {
+        const ret = this.libxml.prevElement();
+        return ret ? new Element(ret) : null;
+    }
+
+    /**
      * Returns the next sibling element or null
      */
     public get nextElement() : Element {
-        return new Element(this.libxml.nextElement());
+        const ret = this.libxml.nextElement();
+        return ret ? new Element(ret) : null;
     }
 
     public child(index: number) : Element {
         const children = this.children;
-        return children.length > 0 ? children[index] : null;
+        return children.length > 0 && index < children.length ? children[index] : null;
     }
 
     /**
@@ -153,6 +162,17 @@ export class Element {
      */
     public replace(newElement: Element) : void {
         this.libxml.replace(newElement.libxml);
+    }
+
+    /**
+     * Decided to not use lodash to reduce number of dependecies
+     * @param otherElement 
+     * @returns 
+     */
+    public equals(otherElement: Element) : boolean {
+        return this.libxml.toString() === otherElement.libxml.toString()
+            && this.line === otherElement.line
+            && this.libxml.doc().toString() === otherElement.libxml.doc().toString();
     }
 
 }

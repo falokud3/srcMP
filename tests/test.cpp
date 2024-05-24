@@ -10,11 +10,13 @@
 int main(){
 
   float a[1000], b[1000];
-  int i;
   
-  for (i = 0; i<1000; i++) {
+  for (int i=1; 1000<i + 1; i++) {
     a[i]= b[i];
   }
-	
+
+  for (;;) {
+  }
+
    return 0;
 }

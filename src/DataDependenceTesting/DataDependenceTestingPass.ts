@@ -61,44 +61,125 @@ function isLoopTestEligible(loop: Xml.Loop) : boolean {
 
    if(!isCanonicalLoop(loop))
 
-   return true;
+
+   // TODO : Allow parallelizable calls from standard library
+   return isCanonicalLoop(loop) && !loop.contains(".//xmlns:call")
+      && incrementValueIsDeterminable(loop);
 }
 
 /**
  * Returns true if the loop is in canonical form 
- * @param loop 
  * @see https://www.openmp.org/spec-html/5.1/openmpsu45.html
  */
 function isCanonicalLoop(loop: Xml.Loop) : boolean {
-   return initExpressionCheck(loop) !== null;
+   const indexVariable = getCanonicalInit(loop);
+   if (!indexVariable) return false;
+
+   return hasCanonicalCondition(loop, indexVariable) 
+      && hasCanonicalIncrement(loop, indexVariable) 
+      && hasCanonicalBody(loop, indexVariable);
 }
 
 /**
  * Returns the loop index variable if the initilization expression has one of 
  * the following forms (null otherwise):
- * * var = lb
- * * integer-type var = lb
- * @param loop 
+ * * indexVar = lb
+ * * integer-type indexVar = lb
  */
-function initExpressionCheck(loop: Xml.Loop) : Xml.Element {
-   const init = loop.getInitialization();
-   if (init.children.length != 1) return null;    // int i, j = 0
+function getCanonicalInit(loop: Xml.Loop) : Xml.Element {
+   const init = loop.initialization;
+   // handles having no init and multiple init scenarios
+   if (init.children.length != 1) return null;
 
-   const child = init.child(0);
-   const variableLocation = child.name === "decl" ? 1 : 0;
-   const variable = child.child(variableLocation);
+   const initStatement = init.child(0);
+   const variableLocation = initStatement.name === "decl" ? 1 : 0;
+   const variable = initStatement.child(variableLocation);
 
    if (Xml.isComplexName(variable)) return null;
+
+   // Disasllows Augmented Assignment & cases like i = j = 0
+   if (initStatement.name === "expr" && (initStatement.child(1)?.text !== "=" 
+       || initStatement.find("./xmlns:operator[contains(text(),'=')]").length !== 1)) return null;
    
-   console.log(variable.libraryXmlObject.toString());
-   // j = 0
-   if (child.name === "expr") {
-      
-   } 
-   // int j = 0
-   else if (child.name === "decl") {
-      
+   return variable;
+}
+
+/**
+ * Returns true if the conditions expression has one of the following forms 
+ * (false otherwise):
+ * * indexVar relational-op ub
+ * * ub relational-op index indexVar
+ * 
+ * ! Note that != is not currently supported and returns false
+ */
+function hasCanonicalCondition(loop: Xml.Loop, indexVariable: Xml.Element) : boolean {
+   const conditionExpression = loop.condition.get("./xmlns:expr");
+   if (!conditionExpression) return false;
+
+   // TODO: Allow for != casw wehre incr-expr == 1
+   const operators = conditionExpression.find("./xmlns:operator");
+   operators.filter((op: Xml.Element) => {
+      return ["&lt;","&gt;", "&lt;=", "&gt;="].includes(op.text);
+   });
+   if (operators.length != 1) return false;
+
+   return operators[0].prevElement.equals(indexVariable)
+      || operators[0].nextElement.equals(indexVariable);
+}
+
+/**
+ * Returns true if there is one and only one expression with the indexVariable
+ * in the increment statement, and the increment must be of a standard form
+ * like indexVar++ or indexVar = indexVar + step
+ * @see https://www.openmp.org/spec-html/5.1/openmpsu45.html 
+ */
+function hasCanonicalIncrement(loop: Xml.Loop, indexVariable: Xml.Element) : boolean {
+   const incrementExpressions = loop.increment.find("./xmlns:expr");
+   if (incrementExpressions.length !== 1) return false;
+
+   const expr = incrementExpressions[0];
+   if (expr.contains("./xmlns:operator[text()='++' or text()='--']")
+       && indexVariable.equals(expr.get("./xmlns:name"))) { return true;
+   } else if (expr.contains("./xmlns:operator[text()='=']")) {
+      return expr.children.length === 5 
+         && indexVariable.equals(expr.child(0))
+         && (indexVariable.equals(expr.child(2)) || indexVariable.equals(expr.child(4)))
+         && ["+", "-"].includes(expr.child(3).text);
+   } else if (expr.contains("./xmlns:operator[text()='+=' or text()='-=']")) {
+      return expr.children.length === 3
+         && indexVariable.equals(expr.child(0));
    }
+
+   return false;
+}
+
+/**
+ * Returns true if the indexVariable is not redfined within the loop body and
+ * if there are no jump statements within the loop boyd
+ * @param loop 
+ * @param indexVariable 
+ * @returns 
+ */
+function hasCanonicalBody(loop: Xml.Loop, indexVariable: Xml.Element) : boolean {
+   const body = loop.body;
+
+   const indexVariableInstances = body.find(`.//xmlns:name[text()='${indexVariable.text}']`);
+   const isIVRefined = indexVariableInstances.some((instance: Xml.Element) => {
+      return ["++", "--"].includes(instance.prevElement?.text) 
+         || ["++", "--", "="].includes(instance.nextElement?.text);
+   });
+
+   return !isIVRefined && !body.contains(".//xmlns:break") 
+   && !body.contains(".//xmlns:continue") && !body.contains(".//xmlns:return") 
+   && !body.contains(".//xmlns:label") && !body.contains(".//xmlns:goto");
+}
+
+/**
+ * Returns true if the loop increment can be resolved to an 
+ * @param loop 
+ */
+function incrementValueIsDeterminable(loop: Xml.Loop) : boolean {
+   return false;
 }
 
 // top level xml-parser call
