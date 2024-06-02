@@ -3,22 +3,22 @@ import * as Xml from '../Xml/Xml.js'
 class DependenceVector {
 
 
-    private directionVector: Map<Xml.Element, number> = new Map<Xml.Element, number>();
+    private directionVector: Map<Xml.XmlElement, number> = new Map<Xml.XmlElement, number>();
     private dirVec: Map<string, number> = new Map<string, number>();
 
-    public constructor(loop_nest: Xml.Element[] = []) {
-        loop_nest.forEach( (loop: Xml.Element) => {
+    public constructor(loop_nest: Xml.XmlElement[] = []) {
+        loop_nest.forEach( (loop: Xml.XmlElement) => {
             this.directionVector.set(loop, Direction.any);
             this.dirVec.set(loop.text, Direction.any)
         });
     }
 
-    public setDirection(loop: Xml.Element, dir: Direction) {
+    public setDirection(loop: Xml.XmlElement, dir: Direction) {
         this.directionVector.set(loop, dir);
         this.dirVec.set(loop.text, dir)
     }
 
-    public getDirection(loop: Xml.Element, string_version: boolean) {
+    public getDirection(loop: Xml.XmlElement, string_version: boolean) {
         if (string_version) {
             return this.dirVec.get(loop.text);
         } else {

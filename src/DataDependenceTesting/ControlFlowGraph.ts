@@ -1,21 +1,20 @@
 import * as Xml from '../Xml/Xml.js'
-import * as libxmljs2 from 'libxmljs2'
-import { RangeDomain, VariableRange } from './RangeDomain.js';
+import { RangeDomain, Range } from './RangeDomain.js';
 
 // ! doesn't support labels and goto statements
-export class CFGraph {
+export class ControlFlowGraph {
 
-    private nodes: CFNode[];
+    public nodes: ControlFlowNode[];
 
-    private static loopJumps: CFNode[] = [];
-    private static labelNodes: Map<string, CFNode> = new Map<string, CFNode>();
-    private static gotoJumps: CFNode[] = [];
+    private static loopJumps: ControlFlowNode[] = [];
+    private static labelNodes: Map<string, ControlFlowNode> = new Map<string, ControlFlowNode>();
+    private static gotoJumps: ControlFlowNode[] = [];
 
-    public constructor() {
+    private constructor() {
         this.nodes = [];
     }
 
-    public addNode(node: CFNode) {
+    public addNode(node: ControlFlowNode) {
         if (!this.nodes.includes(node)) this.nodes.push(node);
     }
 
@@ -35,7 +34,7 @@ export class CFGraph {
         return ret;
     }
 
-    public addAllNodes(node: CFNode, visited: number[]) : void {
+    public addAllNodes(node: ControlFlowNode, visited: number[]) : void {
         this.addNode(node);
         for (const adjNode of node.adjacents) {
             this.addNode(adjNode);
@@ -46,7 +45,7 @@ export class CFGraph {
         }
     }
 
-    private static rTopologicalSort(node: CFNode, visited: number[], newOrder: CFNode[]) {
+    private static rTopologicalSort(node: ControlFlowNode, visited: number[], newOrder: ControlFlowNode[]) {
         visited.push(node.num);
         for (const child of node.adjacents) {
             if (!visited.includes(child.num)) {
@@ -56,13 +55,13 @@ export class CFGraph {
         newOrder.splice(0, 0, node);
     }
 
-    public topologicalSort(root: CFNode = this.nodes[0]) {
-        const newOrder: CFNode[] = [];
+    public topologicalSort(root: ControlFlowNode = this.nodes[0]) {
+        const newOrder: ControlFlowNode[] = [];
         for (const node of this.nodes) {
             node.newOrder = -1;
         }
 
-        CFGraph.rTopologicalSort(root, [], newOrder);
+        ControlFlowGraph.rTopologicalSort(root, [], newOrder);
 
         for (let i = 0; i < newOrder.length; i++) {
             newOrder[i].newOrder = i; 
@@ -71,14 +70,16 @@ export class CFGraph {
         this.nodes = newOrder;
     }
 
-    public isReachable(stmt1: Xml.Element, stmt2: Xml.Element) : boolean {
+    public isReachable(stmt1: Xml.XmlElement, stmt2: Xml.XmlElement) : boolean {
         
-        let from: CFNode = null;
-        let to: CFNode = null;
+        let from: ControlFlowNode | null = null;
+        let to: ControlFlowNode | null = null;
 
         // ! HACKY AND BAD
-        const s1 = stmt1.parent
-        const s2 = stmt2.parent
+        const s1 = stmt1.parentElement
+        const s2 = stmt2.parentElement
+
+        if (!s1 || !s2) return false;
 
         for (const node of this.nodes) {
             // ! POTENTIAL ISSUE WITH IDENTICAL STATEMENTS
@@ -94,98 +95,94 @@ export class CFGraph {
         return to.getOrder() > -1;
     }
 
-    public static buildControlFlowGraph(src: Xml.Element) : CFGraph {
-        const graph = new CFGraph();
-        const newGraph = CFGraph.buildGraph(src);
-        graph.addAllNodes(newGraph, []);
-        // graph.topologicalSort(graph);
-        // graph.iterateToFixpoint(true);
-        // console.log(graph.toString())
-        // const newSrc = graph.substituteAll(src);
-        // graph.getRanges(); // REMOVE
+    public static buildControlFlowGraph(src: Xml.XmlElement) : ControlFlowGraph {
+        const graph = new ControlFlowGraph();
+        const newGraph: ControlFlowNode | null = ControlFlowGraph.buildGraph(src);
+        if (newGraph) {
+            graph.addAllNodes(newGraph, []);
+        }
         return graph;
     }
 
-    private substituteAll(src: Xml.Element) : Xml.Element {
-        for (const node of this.nodes) {
-            // // ! NEED TO ESCAPE STRINGS IN .text
+    private substituteAll(src: Xml.XmlElement) : Xml.XmlElement {
+        throw new Error("NOT IMPLEMEnteD")
+        // for (const node of this.nodes) {
+        //     // // ! NEED TO ESCAPE STRINGS IN .text
 
-            const srcNodes = src.find(`.//xmlns:${node.xml.name}`, Xml.ns);
-            let src_node: Xml.Element = null
-            for (const srcNode of srcNodes) {
-                if (srcNode.text === node.xml.text) {
-                    src_node = node.xml;
-                    break;
-                }
-            }
+        //     const srcNodes = src.find(`.//xmlns:${node.xml.name}`, Xml.ns);
+        //     let src_node: Xml.XmlElement | null = null
+        //     for (const srcNode of srcNodes) {
+        //         if (srcNode.text === node.xml.text) {
+        //             src_node = node.xml;
+        //             break;
+        //         }
+        //     }
 
-            const var_ranges = node.getRanges()
+        //     const var_ranges = node.getRanges()
 
-            const src_vars = src_node.find(".//xmlns:name", Xml.ns);
+        //     if (!src_node) return src;
 
-            console.log(src_node.toString())
-            for (const variable of src_vars) {
-                const var_range = var_ranges.getRange(variable.text);
-                if (var_range && var_range.isConstant()) { // not LHS of Assignment
-                    const replaceLibXml = new libxmljs2.Element(src.libraryXmlObject.doc(), "literal", var_range.getLowerBound().toString());
-                    const replace_node = new Xml.Element(replaceLibXml);
-                    replace_node.setAttribute("type", "number");
-                    if (variable.nextElement.name === "operator" && variable.nextElement.text === "=") {
-                        continue;
-                    } 
-                    console.log("SUBSTITUTION")
-                    variable.replace(replace_node);
-                }
-            }
-            console.log(src_node.toString())
-            console.log("=======")
+        //     const src_vars = src_node.find(".//xmlns:name", Xml.ns);
 
-        }
+        //     console.log(src_node.toString())
+        //     for (const variable of src_vars) {
+        //         const var_range = var_ranges.getRange(variable.text);
+        //         if (var_range && var_range.isConstant) { // not LHS of Assignment
 
-        return null;
+                    
+        //             console.log("SUBSTITUTION")
+        //             // variable.replace(replace_node);
+        //         }
+        //     }
+        //     console.log(src_node.toString())
+        //     console.log("=======")
+
+        // }
+
+
     }
 
-    private static buildGraph(src: Xml.Element) : CFNode {
+    private static buildGraph(src: Xml.XmlElement) : ControlFlowNode | null {
         let type: string = src.name;
         if (type === "function") {
-            return CFGraph.buildFunction(src);
+            return ControlFlowGraph.buildFunction(src);
         } else if (type === "block") {
-            return CFGraph.buildBlock(src);
+            return ControlFlowGraph.buildBlock(src);
         } else if (type === "unit") {
-            return CFGraph.buildUnit(src);
+            return ControlFlowGraph.buildUnit(src);
         } else if (type === "condition") { 
-            return new CFNode(src);
+            return new ControlFlowNode(src);
         } else if (type === "if_stmt") {
-            return CFGraph.buildIf(src);
+            return ControlFlowGraph.buildIf(src);
         } else if (type === "switch") {
-            return CFGraph.buildSwitch(src);
+            return ControlFlowGraph.buildSwitch(src);
         } else if (type === "while") {
-            return CFGraph.buildWhile(src);
+            return ControlFlowGraph.buildWhile(src);
         } else if (type === "do") {
-            return CFGraph.buildDo(src);
+            return ControlFlowGraph.buildDo(src);
         } else if (type === "for") {
-            return CFGraph.buildFor(src);
+            return ControlFlowGraph.buildFor(src);
         } else if (type == "init") {
-            return new CFNode(src);
+            return new ControlFlowNode(src);
         } else if (type == "incr") {
-            return new CFNode(src);
+            return new ControlFlowNode(src);
         } else if (type === "break" || type === "continue") {
-            const ret = new CFNode(src);
+            const ret = new ControlFlowNode(src);
             ret.setConnectable(false);
-            CFGraph.loopJumps.push(ret);
+            ControlFlowGraph.loopJumps.push(ret);
             return ret;
         } else if (type === "return") {
-            const ret = new CFNode(src);
+            const ret = new ControlFlowNode(src);
             ret.setConnectable(false);
             return ret;
         } else if (type === "case" || type === "default") {
-            return CFGraph.buildCase(src);
+            return ControlFlowGraph.buildCase(src);
         } else if (type.includes("stmt") || type === "expr" || type == "decl") {
-            return new CFNode(src);
+            return new ControlFlowNode(src);
         } else if (type === "label") {
-            return CFGraph.buildLabel(src);
+            return ControlFlowGraph.buildLabel(src);
         } else if (type === "goto") {
-            return CFGraph.buildGoto(src);
+            return ControlFlowGraph.buildGoto(src);
         } else if (type === "comment") {
             return null;
         } else {
@@ -194,20 +191,21 @@ export class CFGraph {
         }
     }
 
-    private static buildFunction(func: Xml.Element) : CFNode {
-        return CFGraph.buildBlock(func.get("./xmlns:block", Xml.ns));
+    private static buildFunction(func: Xml.XmlElement) : ControlFlowNode | null {
+        const block = func.get("./xmlns:block", Xml.ns);
+        return ControlFlowGraph.buildBlock(block!);
     }
 
-    private static buildBlock(block: Xml.Element) : CFNode {
-        const blockContent = block.get("./xmlns:block_content", Xml.ns);
-        let ret: CFNode = null;
-        const children = blockContent.children
+    private static buildBlock(block: Xml.XmlElement) : ControlFlowNode {
+        const blockContent = block.get("./xmlns:block_content", Xml.ns)!;
+        let ret: ControlFlowNode | null = null;
+        const children = blockContent.elementChildren
 
         for (const child of children) {
             // TODO: Skippable Nodes Refactor
             if (child.name === "function") continue;
 
-            let childnode = CFGraph.buildGraph(child);
+            let childnode = ControlFlowGraph.buildGraph(child);
 
             if (!childnode) continue;
 
@@ -218,24 +216,24 @@ export class CFGraph {
 
             if (child.name != "break" && child.name != "continue" 
                 && child.name != "return" && child.name != "goto") {
-                CFNode.connectNodes(ret, childnode);
+                ControlFlowNode.connectNodes(ret, childnode);
             } else {
-                CFNode.connectNodes(ret, childnode, false);
+                ControlFlowNode.connectNodes(ret, childnode, false);
                 break; // any other nodes would be unreachable code
             }
         }
-        return ret ? ret : new CFNode(blockContent);
+        return ret ? ret : new ControlFlowNode(blockContent);
     }
 
-    private static buildUnit(unit: Xml.Element) : CFNode {
-        const children = unit.children;
-        let ret: CFNode = null;
+    private static buildUnit(unit: Xml.XmlElement) : ControlFlowNode {
+        const children = unit.elementChildren;
+        let ret: ControlFlowNode | null = null;
 
         for (const child of children) {
             // TODO: Skippable Nodes Refactor
             if (child.name === "function") continue;
 
-            let childnode = CFGraph.buildGraph(child);
+            let childnode = ControlFlowGraph.buildGraph(child);
 
             if (!childnode) continue;
 
@@ -246,41 +244,41 @@ export class CFGraph {
 
             if (child.name != "break" && child.name != "continue" 
                 && child.name != "return" && child.name != "goto") {
-                CFNode.connectNodes(ret, childnode);
+                ControlFlowNode.connectNodes(ret, childnode);
             } else {
-                CFNode.connectNodes(ret, childnode, false);
+                ControlFlowNode.connectNodes(ret, childnode, false);
                 break; // any other nodes would be unreachable code
             }
         }
 
-        return ret ? ret : new CFNode(unit);
+        return ret ? ret : new ControlFlowNode(unit);
     }
 
     // the chosen approach may mess up the tails on the internal conds, but
     // those aren't relevant to the build process and tails should not be used
     // for tree traversal
-    private static buildIf(ifStmt: Xml.Element) : CFNode {
+    private static buildIf(ifStmt: Xml.XmlElement) : ControlFlowNode {
         // initial if
-        const tail: CFNode[] = [];
-        let ifXml = ifStmt.children[0];
+        const tail: ControlFlowNode[] = [];
+        let ifXml: Xml.XmlElement | null = ifStmt.elementChildren[0];
 
-        const firstCondXml = ifXml.get("./xmlns:condition", Xml.ns);
-        const firstCond = CFGraph.buildGraph(firstCondXml);
-        const firstBlockXml = ifXml.get("./xmlns:block", Xml.ns);
-        const firstBlock = CFGraph.buildBlock(firstBlockXml);
+        const firstCondXml = ifXml.get("./xmlns:condition", Xml.ns)!;
+        const firstCond = ControlFlowGraph.buildGraph(firstCondXml)!;
+        const firstBlockXml = ifXml.get("./xmlns:block", Xml.ns)!;
+        const firstBlock = ControlFlowGraph.buildBlock(firstBlockXml);
 
-        CFNode.connectNodes(firstCond, firstBlock);
+        ControlFlowNode.connectNodes(firstCond, firstBlock);
         tail.push(...firstBlock.getTail());
 
         let cond = firstCond;
         while (ifXml = ifXml.nextElement) {
-            const blockXml = ifXml.get("./xmlns:block", Xml.ns);
-            const blockNode = CFGraph.buildBlock(blockXml);
+            const blockXml = ifXml.get("./xmlns:block", Xml.ns)!;
+            const blockNode = ControlFlowGraph.buildBlock(blockXml);
 
             //const ifXml = ifStmt.childNodes()[i]; // <if> or <else>
             const condXml = ifXml.get("./xmlns:condition", Xml.ns);
             if (condXml) { // <else> has no <cond>
-                const newCond = CFGraph.buildGraph(condXml);
+                const newCond = ControlFlowGraph.buildGraph(condXml)!;
                 cond.addAdjacent(newCond);
                 cond = newCond;
             }
@@ -294,47 +292,48 @@ export class CFGraph {
         return firstCond;
     }
     
-    private static buildCase(caseStmt: Xml.Element) : CFNode {
-        const caseNode = new CFNode(caseStmt);
+    private static buildCase(caseStmt: Xml.XmlElement) : ControlFlowNode {
+        const caseNode = new ControlFlowNode(caseStmt);
 
-        let curr = caseStmt;
+        let curr: Xml.XmlElement | null = caseStmt;
         while (curr = curr.nextElement) {
             if (curr.name === "case" || curr.name === "default") break;
             // TODO: Skippable Nodes Refactor
             if (curr.name === "function") continue;
-            const currNode = CFGraph.buildGraph(curr);
+            const currNode = ControlFlowGraph.buildGraph(curr);
             if (!currNode) continue;
-            CFNode.connectNodes(caseNode, currNode);
+            ControlFlowNode.connectNodes(caseNode, currNode);
             if (curr.name === "break") {
                 currNode.setConnectable(true);
-                CFGraph.loopJumps.pop();
+                ControlFlowGraph.loopJumps.pop();
                 break;
             }
         }
         return caseNode;
     }
 
-    private static buildSwitch(switchStmt: Xml.Element) : CFNode {
-        const condXml = switchStmt.get("./xmlns:condition", Xml.ns);
-        const cond = CFGraph.buildGraph(condXml);
+    private static buildSwitch(switchStmt: Xml.XmlElement) : ControlFlowNode {
+        const condXml = switchStmt.get("./xmlns:condition", Xml.ns)!;
+        const cond = ControlFlowGraph.buildGraph(condXml)!;
 
         let hasDefaultCase: boolean = false;
-        const casesXml = switchStmt.get("./xmlns:block/xmlns:block_content", Xml.ns)
-            .children
-            .filter((node: Xml.Element) => {
+        const casesXml = switchStmt.get("./xmlns:block/xmlns:block_content", Xml.ns)!
+            .elementChildren
+            .filter((node: Xml.XmlElement) => {
                 if (node.name == "case") return true;
                 if (node.name == "default") {
                     hasDefaultCase = true;
                     return true;
                 }
+                return false;
             });
     
-        let prevCase: CFNode = null;
+        let prevCase: ControlFlowNode | null = null;
         for (const caseXml of casesXml) {
-            let caseNode: CFNode = CFGraph.buildCase(caseXml);
+            let caseNode: ControlFlowNode = ControlFlowGraph.buildCase(caseXml);
             let hasBreak: boolean = caseNode.getTail()[0].xml.name == "break";
 
-            if (prevCase) CFNode.connectNodes(prevCase, caseNode);
+            if (prevCase) ControlFlowNode.connectNodes(prevCase, caseNode);
             cond.addAdjacent(caseNode);
 
             if (!hasBreak) cond.popTailNode();
@@ -347,75 +346,81 @@ export class CFGraph {
         return cond;
     }
 
-    private static buildWhile(whileStmt: Xml.Element) : CFNode {
+    private static buildWhile(whileStmt: Xml.XmlElement) : ControlFlowNode {
 
-        const condition = whileStmt.get("./xmlns:condition", Xml.ns);
-        const condNode = CFGraph.buildGraph(condition);
+        const condition = whileStmt.get("./xmlns:condition", Xml.ns)!;
+        const condNode = ControlFlowGraph.buildGraph(condition)!;
     
                 
-        const blockXml = whileStmt.get("./xmlns:block", Xml.ns);
-        const blockNode = CFGraph.buildBlock(blockXml);
-        CFNode.connectNodes(condNode, blockNode);
-        CFNode.connectNodes(blockNode, condNode, false);
+        const blockXml = whileStmt.get("./xmlns:block", Xml.ns)!;
+        const blockNode = ControlFlowGraph.buildBlock(blockXml);
+        ControlFlowNode.connectNodes(condNode, blockNode);
+        ControlFlowNode.connectNodes(blockNode, condNode, false);
 
         condNode.setTail([]); 
 
-        CFGraph.resolveLoopJumps(condNode, condNode);
+        condNode.loopVariants = whileStmt.defSymbols;
+
+        ControlFlowGraph.resolveLoopJumps(condNode, condNode);
 
         return condNode;
     }
 
     // ! Assume for loop always has two semicolons
-    private static buildFor(forstmt: Xml.Element) : CFNode {
+    private static buildFor(forstmt: Xml.XmlElement) : ControlFlowNode {
 
-        const initXml = forstmt.get("./xmlns:control/xmlns:init", Xml.ns);
-        const initNode = CFGraph.buildGraph(initXml);
+        const initXml = forstmt.get("./xmlns:control/xmlns:init", Xml.ns)!;
+        const initNode = ControlFlowGraph.buildGraph(initXml)!;
         
         // condition
-        const condition = forstmt.get("./xmlns:control/xmlns:condition", Xml.ns);
-        const condNode = CFGraph.buildGraph(condition);
-        CFNode.connectNodes(initNode, condNode);
+        const condition = forstmt.get("./xmlns:control/xmlns:condition", Xml.ns)!;
+        const condNode = ControlFlowGraph.buildGraph(condition)!;
+        ControlFlowNode.connectNodes(initNode, condNode);
 
         // body
-        const blockXml = forstmt.get("./xmlns:block", Xml.ns);
-        const blockNode = CFGraph.buildBlock(blockXml);
-        CFNode.connectNodes(initNode, blockNode);
+        const blockXml = forstmt.get("./xmlns:block", Xml.ns)!;
+        const blockNode = ControlFlowGraph.buildBlock(blockXml)!;
+        ControlFlowNode.connectNodes(initNode, blockNode);
 
-        const incrXML = forstmt.get("./xmlns:control/xmlns:incr", Xml.ns);
-        const incrNode = CFGraph.buildGraph(incrXML);
-        CFNode.connectNodes(blockNode, incrNode);
-        CFNode.connectNodes(incrNode, condNode);
+        const incrXML = forstmt.get("./xmlns:control/xmlns:incr", Xml.ns)!;
+        const incrNode = ControlFlowGraph.buildGraph(incrXML)!;
+        ControlFlowNode.connectNodes(blockNode, incrNode);
+        ControlFlowNode.connectNodes(incrNode, condNode);
 
 
         initNode.setTail([condNode]);
 
-        CFGraph.resolveLoopJumps(incrNode, initNode);
+        ControlFlowGraph.resolveLoopJumps(incrNode, initNode);
+
+        condNode.loopVariants = forstmt.defSymbols;
 
         return initNode;
     }
 
-    private static buildDo(doStmt: Xml.Element) : CFNode {
+    private static buildDo(doStmt: Xml.XmlElement) : ControlFlowNode {
 
-        const blockXml = doStmt.get("./xmlns:block", Xml.ns);
-        const blockNode = CFGraph.buildBlock(blockXml);
+        const blockXml = doStmt.get("./xmlns:block", Xml.ns)!;
+        const blockNode = ControlFlowGraph.buildBlock(blockXml)!;
 
         // condition
-        const conditionXML = doStmt.get("./xmlns:condition", Xml.ns);
-        const condNode = CFGraph.buildGraph(conditionXML);
+        const conditionXML = doStmt.get("./xmlns:condition", Xml.ns)!;
+        const condNode = ControlFlowGraph.buildGraph(conditionXML)!;
 
-        CFNode.connectNodes(blockNode, condNode);
-        CFNode.connectNodes(condNode, blockNode, false);
+        condNode.loopVariants = doStmt.defSymbols;
 
-        CFGraph.resolveLoopJumps(condNode, blockNode);
+        ControlFlowNode.connectNodes(blockNode, condNode);
+        ControlFlowNode.connectNodes(condNode, blockNode, false);
+
+        ControlFlowGraph.resolveLoopJumps(condNode, blockNode);
 
         return blockNode;
     }
 
-    private static resolveLoopJumps(enterNode: CFNode, exitNode: CFNode) {
-        for (const jumpNode of CFGraph.loopJumps) {
+    private static resolveLoopJumps(enterNode: ControlFlowNode, exitNode: ControlFlowNode) {
+        for (const jumpNode of ControlFlowGraph.loopJumps) {
             jumpNode.setConnectable(true);
             if (jumpNode.xml.name == "continue") {
-                CFNode.connectNodes(jumpNode, enterNode);
+                ControlFlowNode.connectNodes(jumpNode, enterNode);
             // break
             } else {
                 exitNode.addTailNode(jumpNode);
@@ -423,31 +428,31 @@ export class CFGraph {
         }
     }
 
-    private static buildLabel(labelStmt: Xml.Element) : CFNode {
-        const labelNode = new CFNode(labelStmt);
-        const labelNameXml = labelStmt.get("./xmlns:name", Xml.ns);
+    private static buildLabel(labelStmt: Xml.XmlElement) : ControlFlowNode {
+        const labelNode = new ControlFlowNode(labelStmt);
+        const labelNameXml = labelStmt.get("./xmlns:name", Xml.ns)!;
         this.labelNodes.set(labelNameXml.text, labelNode);
 
-        for (let i = 0; i < CFGraph.gotoJumps.length; i++) {
-            const gotoNode = CFGraph.gotoJumps[i];
-            const nodeLabelXml = gotoNode.xml.get("./xmlns:name", Xml.ns);
+        for (let i = 0; i < ControlFlowGraph.gotoJumps.length; i++) {
+            const gotoNode = ControlFlowGraph.gotoJumps[i];
+            const nodeLabelXml = gotoNode.xml.get("./xmlns:name", Xml.ns)!;
             if (nodeLabelXml.text === labelNameXml.text) {
                 gotoNode.addAdjacent(labelNode);
-                CFGraph.gotoJumps.splice(i, 1);
+                ControlFlowGraph.gotoJumps.splice(i, 1);
                 i--;
             }
         }
         return labelNode;
     }
 
-    private static buildGoto(gotoStmt: Xml.Element) : CFNode {
-        const gotoNode = new CFNode(gotoStmt);
-        const labelNameXml = gotoStmt.get("./xmlns:name", Xml.ns);
-        const labelNode = CFGraph.labelNodes.get(labelNameXml.text);
+    private static buildGoto(gotoStmt: Xml.XmlElement) : ControlFlowNode {
+        const gotoNode = new ControlFlowNode(gotoStmt);
+        const labelNameXml = gotoStmt.get("./xmlns:name", Xml.ns)!;
+        const labelNode = ControlFlowGraph.labelNodes.get(labelNameXml.text);
         if (labelNode) {
             gotoNode.addAdjacent(labelNode);
         } else {
-            CFGraph.gotoJumps.push(gotoNode);
+            ControlFlowGraph.gotoJumps.push(gotoNode);
         }
         gotoNode.setConnectable(false);
         return gotoNode;
@@ -457,46 +462,8 @@ export class CFGraph {
 
     }
 
-    // TODO: Review
-    public iterateToFixpoint(widen: boolean = false) : void {
-        const worklist: CFNode[] = [];
 
-        if (widen) {
-            worklist.push(this.nodes[0]);
-        } else {
-            for (const node of this.nodes) {
-                if (node.hasBackedge()) worklist.push(node);
-            }
-        }
-
-        while (worklist.length > 0) {
-            const index = CFGraph.getFirstTopoNodeIndex(worklist);
-            const node = worklist.splice(index, 1)[0];
-
-            const currRanges = new RangeDomain();
-            for (const pred of node.preds) {
-                if (pred.getRanges().isEmpty()) continue;
-                currRanges.unionRanges(pred.getRanges());
-            }
-            
-            const nodePrevRanges = node.getRanges();
-            // TODO: WIDEN/NARROW
-            // if (!nodePrevRanges.isEmpty() && node.hasBackedge()) {
-                
-            // }
-
-            if (nodePrevRanges.isEmpty() || !nodePrevRanges.equals(currRanges)) {
-                node.setRanges(currRanges);
-                node.updateRange();
-                for (const succ of node.succs) {
-                    worklist.push(succ);
-                }
-            }
-        }
-    }
-
-    public static getFirstTopoNodeIndex(list: CFNode[]) : number{
-        if (list.length < 1) return null;
+    public static getIndexOfFirstNodeTopographically(list: ControlFlowNode[]) : number {
         let index: number = 0;
         for (let i = 1; i < list.length; i++) {
             if (list[i].getOrder() < list[index].getOrder()) {
@@ -507,30 +474,40 @@ export class CFGraph {
     }
 }
 
-class CFNode {
-    private data: Xml.Element;
-    private outEdges: CFNode[];
-    private inEdges: CFNode[];
-    private tail: CFNode[]; // used exclusively for build process then deleted
-    private order: number = -1; // topological order
-    private idNum: number;
-    private connectable: boolean = true;
-    private ranges: RangeDomain;
-    private backedge: boolean;
-
+export class ControlFlowNode {
     private static maxID: number = 1;
 
-    public constructor(data: Xml.Element) {
-        this.data = data
+
+    private tail: ControlFlowNode[]; // used exclusively for build process then deleted
+    private connectable: boolean = true;
+
+    private _xml: Xml.XmlElement;
+
+    private outEdges: ControlFlowNode[];
+    private inEdges: ControlFlowNode[];
+
+    private order: number = -1; // topological order
+
+    private _idNum: number; // for toDot ouptut 
+
+    public inRanges: Map<ControlFlowNode, RangeDomain> = new Map<ControlFlowNode, RangeDomain>();
+    private currRanges: RangeDomain;
+    public outRanges: Map<ControlFlowNode, RangeDomain> = new Map<ControlFlowNode, RangeDomain>();
+
+    private backedge: boolean | undefined;
+    public loopVariants: Set<Xml.XmlElement> | undefined = undefined;
+
+    public constructor(data: Xml.XmlElement) {
+        this._xml = data
         this.outEdges = [];
         this.inEdges = [];
         this.tail = [];
-        this.idNum = CFNode.maxID++;
-        this.ranges = new RangeDomain();
+        this._idNum = ControlFlowNode.maxID++;
+        this.currRanges = new RangeDomain();
     }
 
     // this extending tail
-    public addAdjacent(node: CFNode) {
+    public addAdjacent(node: ControlFlowNode) {
         if (!this.outEdges.includes(node)) this.outEdges.push(node);
         if (!node.inEdges.includes(this)) node.inEdges.push(this);
         for (const tailNode of node.getTail()) {
@@ -539,7 +516,7 @@ class CFNode {
     }
 
     // connecting tip to tail
-    public static connectNodes(from: CFNode, to: CFNode, updateTail: boolean = true) {
+    public static connectNodes(from: ControlFlowNode, to: ControlFlowNode, updateTail: boolean = true) {
         // spread fixes weird bug were tail would grow when adding nodes
         const fromTail = [...from.getTail()]
 
@@ -551,11 +528,11 @@ class CFNode {
     }
 
     // tail are all the nodes without outgoing edge
-    public getTail() : CFNode[] {
+    public getTail() : ControlFlowNode[] {
         return this.tail.length > 0 ? this.tail : [this];
     }
 
-    public setTail(newTail: CFNode[]) : void {
+    public setTail(newTail: ControlFlowNode[]) : void {
         this.tail = newTail;
     }
 
@@ -563,7 +540,7 @@ class CFNode {
         this.connectable = val;
     }
 
-    public addTailNode(node: CFNode) : void {
+    public addTailNode(node: ControlFlowNode) : void {
         this.tail.push(node);
     }
 
@@ -571,16 +548,16 @@ class CFNode {
         this.tail.pop();
     }
 
-    public get adjacents() : CFNode[] {
+    public get adjacents() : ControlFlowNode[] {
         return this.outEdges;
     }
 
-    public get xml() : Xml.Element {
-        return this.data;
+    public get xml() : Xml.XmlElement {
+        return this._xml;
     }
 
     public get num() : number {
-        return this.idNum;
+        return this._idNum;
     }
 
     public getOrder() : number {
@@ -591,84 +568,61 @@ class CFNode {
         this.order = order;
     }
 
-    public get preds() : CFNode[] {
+    public get preds() : ControlFlowNode[] {
         return this.inEdges;
     }
 
-    public get succs() : CFNode[] {
+    public get succs() : ControlFlowNode[] {
         return this.outEdges;
     }
-
+    
     public getRanges() : RangeDomain {
-        return this.ranges;
+        return this.currRanges;
     }
 
     public setRanges(newRanges: RangeDomain) : void {
-        this.ranges = newRanges;
+        this.currRanges = newRanges;
     }
 
     public hasBackedge() : boolean {
-        if (this.backedge === undefined) this.setBackedge();
-        return this.backedge;
+        return this.backedge ?? this.setBackedge();
     }
 
-    public setBackedge() : void {
+    public setBackedge() : boolean {
         for (const pred of this.inEdges) {
             if (this.order < pred.order) {
                 this.backedge = true;
-                break;
+                return true;
             }
         }
+        return false;
     }
 
     public toString() : string {
         let ret: string = "";
-        ret += this.idNum + " " + this.data.name;
+        ret += this._idNum + " " + this._xml.name;
         return ret;
     }
 
     public nodeInfoToString() : string {
         let ret = "";
-        ret += `node${this.idNum} [label="#${this.order}\\n<${this.data.name}>\\n`;
-        ret += `${this.data.text.trim()}\\n`;
-        ret += `${this.ranges.toString()}\\n"]`
+        ret += `node${this._idNum} [label="#${this.order}\\n<${this._xml.name}>\\n`;
+        ret += `${this._xml.text.trim()}\\n`;
+        ret += `${this.currRanges.toString()}\\n"]`
         return ret;
     }
 
     public nodeEdgesToString() : string {
         if (this.outEdges.length == 0) return "";
 
-        let ret = `node${this.idNum}->{ `;
+        let ret = `node${this._idNum}->{ `;
 
         for (const adj of this.outEdges) {
-            ret += `node${adj.idNum} `;
+            ret += `node${adj._idNum} `;
         }
 
         ret += "};"
         return ret;
-    }
-
-    // TODO: ALL OTHER CASES
-    public updateRange() : void {
-        if (this.data.name === "expr_stmt") {
-            const expr = this.data.children[0];
-            const variable = expr.children[0];
-            const op = expr.children[1];
-
-            // TODO: restructure method around finding this operator and expand outword
-            if (op.name === "operator" && op.text === "=") {
-                const lit = op.nextElement;
-                if (lit.name === "literal") {
-                    const val = Number(lit.text);
-                    const currRange = this.ranges.getRange(variable.text);
-                    if (currRange === undefined) {
-                        this.ranges.setRange(variable.text, val, val);
-                    } else {
-                        this.ranges.unionRange(variable.text, new VariableRange(variable.text, val, val));
-                    }
-                }
-            }
-        }
     }
 
 }

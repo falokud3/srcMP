@@ -7,12 +7,14 @@ import { SubscriptPair } from './SubscriptPair.js';
 
 import { RangeTest } from './RangeTest.js';
 import { BanerjeeTest } from './BanerjeeTest.js';
-import * as ComplexMath from '../ComplexMath.js'
+import * as ComplexMath from '../ComputerAlgebraSystem.js'
 import { DataDependenceGraph } from './DataDependenceGraph.js';
 import * as AliasAnalysis from './AliasAnalysis.js'
+import * as RangeAnalysis from './RangeAnalysis.js'
+import { RangeDomain } from './RangeDomain.js';
 
 
-export function run(root: Xml.Element) : void {
+export function run(root: Xml.XmlElement) : void {
 
    const dataDepGraph = new DataDependenceGraph();
 
@@ -32,17 +34,17 @@ export function run(root: Xml.Element) : void {
    // return DDG
 
 
-   const forLoops = <Xml.Loop[]> root.find('//xmlns:for');
+   // const forLoops = <Xml.ForLoop[]> root.find('//xmlns:for');
 
-   // TODO: Handeling of nested loops
-      // TODO: extracting only the outermost loops
-   forLoops.forEach((forNode: Xml.Loop) => {
-       analyzeLoopForDependence(forNode);
-   });
+   // // TODO: Handeling of nested loops
+   //    // TODO: extracting only the outermost loops
+   // forLoops.forEach((forNode: Xml.ForLoop) => {
+   //     analyzeLoopForDependence(forNode);
+   // });
 }
 
-function getTestableLoops(root: Xml.Element) : Xml.Loop[] {
-   const loopElements = <Xml.Loop[]> root.find(".//xmlns:for[count(ancestor::xmlns:for)=0]")
+function getTestableLoops(root: Xml.XmlElement) : Xml.ForLoop[] {
+   const loopElements = <Xml.ForLoop[]> root.find(".//xmlns:for[count(ancestor::xmlns:for)=0]")
 
 
 
@@ -57,22 +59,18 @@ function getTestableLoops(root: Xml.Element) : Xml.Loop[] {
    return loopElements;
 }
 
-function isLoopTestEligible(loop: Xml.Loop) : boolean {
-
-   if(!isCanonicalLoop(loop))
-
-
+function isLoopTestEligible(loop: Xml.ForLoop) : boolean {
    // TODO : Allow parallelizable calls from standard library
    return isCanonicalLoop(loop) && !loop.contains(".//xmlns:call")
-      && incrementValueIsDeterminable(loop);
+      && getCanonicalIncrementValue(loop) != undefined;
 }
 
 /**
  * Returns true if the loop is in canonical form 
  * @see https://www.openmp.org/spec-html/5.1/openmpsu45.html
  */
-function isCanonicalLoop(loop: Xml.Loop) : boolean {
-   const indexVariable = getCanonicalInit(loop);
+function isCanonicalLoop(loop: Xml.ForLoop) : boolean {
+   const indexVariable = getCanonicalIndexVariable(loop);
    if (!indexVariable) return false;
 
    return hasCanonicalCondition(loop, indexVariable) 
@@ -86,14 +84,14 @@ function isCanonicalLoop(loop: Xml.Loop) : boolean {
  * * indexVar = lb
  * * integer-type indexVar = lb
  */
-function getCanonicalInit(loop: Xml.Loop) : Xml.Element {
+function getCanonicalIndexVariable(loop: Xml.ForLoop) : Xml.XmlElement | null {
    const init = loop.initialization;
    // handles having no init and multiple init scenarios
-   if (init.children.length != 1) return null;
+   if (init.elementChildren.length != 1) return null;
 
-   const initStatement = init.child(0);
+   const initStatement = init.child(0)!;
    const variableLocation = initStatement.name === "decl" ? 1 : 0;
-   const variable = initStatement.child(variableLocation);
+   const variable = initStatement.child(variableLocation)!;
 
    if (Xml.isComplexName(variable)) return null;
 
@@ -112,19 +110,20 @@ function getCanonicalInit(loop: Xml.Loop) : Xml.Element {
  * 
  * ! Note that != is not currently supported and returns false
  */
-function hasCanonicalCondition(loop: Xml.Loop, indexVariable: Xml.Element) : boolean {
-   const conditionExpression = loop.condition.get("./xmlns:expr");
-   if (!conditionExpression) return false;
+function hasCanonicalCondition(loop: Xml.ForLoop, indexVariable: Xml.XmlElement) : boolean {
+   if (loop.condition.elementChildren.length != 1) return false;
+
+   const conditionExpression = loop.condition.child(0)!;
 
    // TODO: Allow for != casw wehre incr-expr == 1
    const operators = conditionExpression.find("./xmlns:operator");
-   operators.filter((op: Xml.Element) => {
+   operators.filter((op: Xml.XmlElement) => {
       return ["&lt;","&gt;", "&lt;=", "&gt;="].includes(op.text);
    });
    if (operators.length != 1) return false;
 
-   return operators[0].prevElement.equals(indexVariable)
-      || operators[0].nextElement.equals(indexVariable);
+   return (operators[0].prevElement?.equals(indexVariable)
+      || operators[0].nextElement?.equals(indexVariable)) ?? false;
 }
 
 /**
@@ -133,21 +132,24 @@ function hasCanonicalCondition(loop: Xml.Loop, indexVariable: Xml.Element) : boo
  * like indexVar++ or indexVar = indexVar + step
  * @see https://www.openmp.org/spec-html/5.1/openmpsu45.html 
  */
-function hasCanonicalIncrement(loop: Xml.Loop, indexVariable: Xml.Element) : boolean {
-   const incrementExpressions = loop.increment.find("./xmlns:expr");
-   if (incrementExpressions.length !== 1) return false;
+function hasCanonicalIncrement(loop: Xml.ForLoop, indexVariable: Xml.XmlElement) : boolean {
+   if (loop.increment.elementChildren.length !== 1) return false;
 
-   const expr = incrementExpressions[0];
+   const expr = loop.increment.child(0)!;
    if (expr.contains("./xmlns:operator[text()='++' or text()='--']")
-       && indexVariable.equals(expr.get("./xmlns:name"))) { return true;
+       && indexVariable.equals(expr.get("./xmlns:name")!)
+       && expr.elementChildren.length === 2) { return true;
    } else if (expr.contains("./xmlns:operator[text()='=']")) {
-      return expr.children.length === 5 
-         && indexVariable.equals(expr.child(0))
-         && (indexVariable.equals(expr.child(2)) || indexVariable.equals(expr.child(4)))
-         && ["+", "-"].includes(expr.child(3).text);
+      if (expr.elementChildren.length !== 5 || !indexVariable.equals(expr.child(0)!)) return false;
+
+      if (expr.child(3)?.text === "+") {
+         return indexVariable.equals(expr.child(2)!) || indexVariable.equals(expr.child(4)!);
+      } else if (expr.child(3)?.text === "-") {
+         return indexVariable.equals(expr.child(2)!);
+      }
    } else if (expr.contains("./xmlns:operator[text()='+=' or text()='-=']")) {
-      return expr.children.length === 3
-         && indexVariable.equals(expr.child(0));
+      return expr.elementChildren.length === 3
+         && indexVariable.equals(expr.child(0)!);
    }
 
    return false;
@@ -160,31 +162,85 @@ function hasCanonicalIncrement(loop: Xml.Loop, indexVariable: Xml.Element) : boo
  * @param indexVariable 
  * @returns 
  */
-function hasCanonicalBody(loop: Xml.Loop, indexVariable: Xml.Element) : boolean {
+function hasCanonicalBody(loop: Xml.ForLoop, indexVariable: Xml.XmlElement) : boolean {
    const body = loop.body;
 
    const indexVariableInstances = body.find(`.//xmlns:name[text()='${indexVariable.text}']`);
-   const isIVRefined = indexVariableInstances.some((instance: Xml.Element) => {
-      return ["++", "--"].includes(instance.prevElement?.text) 
-         || ["++", "--", "="].includes(instance.nextElement?.text);
+   const isIVRedefined = indexVariableInstances.some((instance: Xml.XmlElement) => {
+      let prevCond: boolean = false;
+      let nextCond: boolean = false;
+      if (instance.prevElement) {
+         prevCond = ["++", "--"].includes(instance.prevElement.text)
+      } 
+
+      if (instance.nextElement) {
+         nextCond = ["++", "--"].includes(instance.nextElement?.text)
+         || [...instance.nextElement?.text].filter((char) => char === '=' ).length === 1;
+      }
+      return prevCond || nextCond;
    });
 
-   return !isIVRefined && !body.contains(".//xmlns:break") 
+   return !isIVRedefined && !body.contains(".//xmlns:break") 
    && !body.contains(".//xmlns:continue") && !body.contains(".//xmlns:return") 
    && !body.contains(".//xmlns:label") && !body.contains(".//xmlns:goto");
 }
 
 /**
- * Returns true if the loop increment can be resolved to an 
- * @param loop 
+ * Returns true if the loop increment can be resolved to an integer value
+ * ! Assumes that the loop is in canonical form
+ * @param loop Loop in canonical form
  */
-function incrementValueIsDeterminable(loop: Xml.Loop) : boolean {
-   return false;
+function getCanonicalIncrementValue(loop: Xml.ForLoop) : number | undefined {
+   const incrExpr = loop.increment.child(0)!;
+   let incrStep: Xml.XmlElement = loop;
+   let isNegativeStep: boolean = false;
+
+   // TODO: Add Assert
+
+   if (incrExpr.contains("./xmlns:operator[text()='++']")) {
+      return 1;
+   } else if (incrExpr.contains("./xmlns:operator[text()='--']")) {
+      return -1;
+   } else if (incrExpr.contains("./xmlns:operator[text()='+=']")) {
+      incrStep = incrExpr.child(2)!;
+   } else if (incrExpr.contains("./xmlns:operator[text()='-=']")) {
+      isNegativeStep = true;
+      incrStep = incrExpr.child(2)!;
+   } else if (incrExpr.contains("./xmlns:operator[text()='=']")) {
+      const indexVariable = getCanonicalIndexVariable(loop);
+      // i = i - step    i = i + step    i = step + i
+      if (incrExpr.child(3)?.text === "-") {
+         isNegativeStep = true;
+         incrStep = incrExpr.child(4)!;
+      } else {
+         if (incrExpr.child(2)?.equals(indexVariable!)) {
+            incrStep = incrExpr.child(4)!;
+         } else {
+            incrStep = incrExpr.child(2)!;
+         }
+      }
+   }
+
+   if (incrStep.name === "literal") {
+      if (incrStep.getAttribute("type") !== "number") return undefined;
+
+      const stepValue = Number(incrStep.text);
+      // ? is safe integer
+      if (!Number.isInteger(stepValue)) return undefined;
+      
+      return isNegativeStep ? -1 * stepValue : stepValue;
+   } else if (incrStep.name === "name") {
+      const rd = RangeAnalysis.query(loop);
+      // const loopInc = rd.substituteForward(incrStep);
+
+   }
+
+   return undefined;
 }
 
 // top level xml-parser call
 // TODO
-function analyzeLoopForDependence(loopNode: Xml.Loop) : void {
+function analyzeLoopForDependence(loopNode: Xml.ForLoop) : void {
    // ? build/return DDG
    dataDependenceFramework(loopNode);
 
@@ -192,20 +248,20 @@ function analyzeLoopForDependence(loopNode: Xml.Loop) : void {
 
 // runDDTest
 // ? build/return DDG
-function dataDependenceFramework(loopNode: Xml.Loop) : void {
+function dataDependenceFramework(loopNode: Xml.ForLoop) : void {
    const array_access_map: Map<String, ArrayAccess[]> = 
       loopNode.getArrayAccesses();
    const innerLoopNest = loopNode.getInnerLoopNest();
    // TODO: INITIALIZE DDG
    for (const arrayName of array_access_map.keys()) {
-      const array_accesses = array_access_map.get(arrayName);
+      const array_accesses = array_access_map.get(arrayName)!;
 
       // TODO: ALIAS CHECKING
 
       for (let i = 0; i < array_accesses.length; i++) {
-         const access_i = array_accesses.at(i);
+         const access_i = array_accesses.at(i)!;
          for (let j = 0; j < array_accesses.length; j++) {
-            const access_j = array_accesses.at(j);
+            const access_j = array_accesses.at(j)!;
 
             if (access_i.getAccessType() === ArrayAccess.read_access &&
                 access_j.getAccessType() === ArrayAccess.read_access) continue;
@@ -214,7 +270,7 @@ function dataDependenceFramework(loopNode: Xml.Loop) : void {
             // NOTE: may not even need to get the 
             let relevantLoopNest = access_i.getEnclosingLoop().getCommonEnclosingLoopNest(access_j.getEnclosingLoop());
             // handle edge where loop being MT is not the outermost loop
-            relevantLoopNest = Xml.Loop.getCommonLoops(relevantLoopNest, innerLoopNest);
+            relevantLoopNest = Xml.ForLoop.getCommonLoops(relevantLoopNest, innerLoopNest);
 
             // TODO: Substitute Range Info
 
@@ -223,9 +279,9 @@ function dataDependenceFramework(loopNode: Xml.Loop) : void {
                relevantLoopNest, dvs);
             
             if (dependenceExists) {
-               const source_stmt = access_i.parentStatement.parent;
+               const source_stmt = access_i.parentStatement.parentElement!;
                const source_stmt_line = source_stmt.line
-               const sink_stmt = access_j.parentStatement.parent;
+               const sink_stmt = access_j.parentStatement.parentElement!;
                const prev_dependencies = sink_stmt.getAttribute("dependencies")
                if (prev_dependencies) {
                   if (!prev_dependencies.includes(String(source_stmt_line))) {
@@ -240,7 +296,7 @@ function dataDependenceFramework(loopNode: Xml.Loop) : void {
       }
    }
 
-   console.log(loopNode.libraryXmlObject.toString());
+   console.log(loopNode.domElement.toString());
 
 }
 
@@ -248,7 +304,7 @@ function dataDependenceFramework(loopNode: Xml.Loop) : void {
 //test AccessPair
 // dvs is an OUT variable
 function testArrayAccessPair(access: ArrayAccess, other_access: ArrayAccess,
-   loopNest: Xml.Element[], dvs: DependenceVector[]) : boolean {
+   loopNest: Xml.XmlElement[], dvs: DependenceVector[]) : boolean {
    let ret: boolean = false;
    // NOTE : THIS IS WHERE TO PICK DEPENDENCE TEST
    ret = testSubscriptBySubscript(access, other_access, loopNest, dvs);
@@ -257,18 +313,18 @@ function testArrayAccessPair(access: ArrayAccess, other_access: ArrayAccess,
 
 // dvs is an OUT variable
 function testSubscriptBySubscript(access: ArrayAccess, other_access: ArrayAccess,
-   loopNest: Xml.Element[], dvs: DependenceVector[]) : boolean {
+   loopNest: Xml.XmlElement[], dvs: DependenceVector[]) : boolean {
    if (access.getArrayDimensionality() == other_access.getArrayDimensionality()) {
       const pairs: SubscriptPair[] = [];
       const dimensions = access.getArrayDimensionality();
       // TODO: Change to foreach
       for (let dim = 1; dim <= dimensions; dim++) {
          const pair = new SubscriptPair(
-            access.getDimension(dim),
-            other_access.getDimension(dim),
+            access.getDimension(dim)!,
+            other_access.getDimension(dim)!,
             access,
             other_access,
-            loopNest);
+            (loopNest as Xml.ForLoop[]));
          pairs.push(pair);
       }
       
@@ -278,7 +334,7 @@ function testSubscriptBySubscript(access: ArrayAccess, other_access: ArrayAccess
       // for a dependency to exist, all subscripts must have a depndency
       for (let i = 0; i < partitions.length; i++) {
          // if testPartition returns false then indepnence is proven
-         if (!testPartition(partitions.at(i), dvs)) return false;
+         if (!testPartition(partitions.at(i)!, dvs)) return false;
       }
 
    } else {
@@ -297,13 +353,13 @@ function partitionPairs(pairs: SubscriptPair[]) : SubscriptPair[][] {
       partitions.push([pair]);
    }) 
 
-   const loopNest = pairs[0].getEnclosingLoops();
-   loopNest.forEach((loopNode: Xml.Loop) => {
-      const loop_indexVar = loopNode.getLoopIndexVariableName().text;
-      let k: number;
+   const loopNest = pairs[0].getEnclosingLoops() as Xml.ForLoop[];
+   loopNest.forEach((loopNode: Xml.ForLoop) => {
+      const loop_indexVar = loopNode.getLoopIndexVariableName()!.text;
+      let k: number | undefined;
       for (let i = 0; i < partitions.length; i++) {
          // check if parition has loop index variable
-         const hasLoopIndex: boolean = partitions.at(i).some((pair: SubscriptPair) => {
+         const hasLoopIndex: boolean = partitions.at(i)!.some((pair: SubscriptPair) => {
             const sub1 = pair.getSubscript1();
             const sub2 = pair.getSubscript2();
             return sub1.containsName(loop_indexVar) ||
@@ -311,10 +367,10 @@ function partitionPairs(pairs: SubscriptPair[]) : SubscriptPair[][] {
          });
 
          if (hasLoopIndex) {
-            if (k === undefined) {
+            if (!k) {
                k = i;
             } else {
-               partitions[k] = partitions.at(k).concat(partitions.at(i));
+               partitions[k] = partitions.at(k)!.concat(partitions.at(i)!);
                partitions.splice(i, 1); // deletes ith partition
                i--;
             }
@@ -344,18 +400,18 @@ function testPartition(parition: SubscriptPair[], dvs: DependenceVector[]) : boo
 }
 
 function testZIV(pair: SubscriptPair) : boolean {
-   const expr1 = pair.getSubscript1().child(1).text;
-   const expr2 = pair.getSubscript2().child(1).text;
+   // const expr1 = pair.getSubscript1().child(1).text;
+   // const expr2 = pair.getSubscript2().child(1).text;
 
-   const exprString = `${expr1} - (${expr2})`
-   const expression = ComplexMath.simplify(exprString);
+   // const exprString = `${expr1} - (${expr2})`
+   // const expression = ComplexMath.simplify(exprString);
 
-   if (!expression.isZero) {
-      console.log("[testZIV] Could not determine independnece due to symoblic constants");
-      return true;
-   } 
+   // if (!expression.isZero) {
+   //    console.log("[testZIV] Could not determine independnece due to symoblic constants");
+   //    return true;
+   // } 
 
-   return expression.isZero;
+   return true;
 }
 
 function testSIV(pair: SubscriptPair) : boolean {

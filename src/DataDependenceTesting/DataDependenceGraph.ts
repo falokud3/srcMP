@@ -15,9 +15,9 @@ export class DataDependenceGraph {
 type Dependence = "Flow" | "Anti" | "Ouptut" | "Input";
 
 class Arc {
-    private source: ArrayAccess;
-    private sink: ArrayAccess;
-    private dependenceType: Dependence;
-    private dependenceVector: DependenceVector;
+    // private source: ArrayAccess;
+    // private sink: ArrayAccess;
+    // private dependenceType: Dependence;
+    // private dependenceVector: DependenceVector;
 
 }

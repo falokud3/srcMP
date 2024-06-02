@@ -1,15 +1,27 @@
 {
   "compilerOptions": {
-    "outDir": "build",
-    "target": "ES6",
+    "allowUnusedLabels": false,
+    "allowUnreachableCode": false,
+    "declaration": true,
+    "forceConsistentCasingInFileNames": true,
 
+    "lib" : ["ES6", "DOM", "DOM.Iterable"],
     "module": "ES2015", // picked to match Bundler
     "moduleResolution": "Bundler", // loose rules to acoomodate packages
 
-    "sourceMap": true, // makes debugger work
+    "noEmitOnError": true,
+    "noFallthroughCasesInSwitch": true,
+    "noImplicitOverride": true,
+    "noImplicitReturns": true,
 
-    "noImplicitAny": true, // added compiler warnings
+    "outDir": "build",
+
+    "pretty": true,
+    "sourceMap": true, 
+    "strict": true,
+
+    "target": "ES6",
   },
-  "include": ["src"],
+  "include": ["src", "modules"],
   "exclude": ["node_modules"],
 }

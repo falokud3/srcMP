@@ -7,11 +7,11 @@ import { execSync } from 'child_process';
 
 
 
-function runCompiler(xmlRoot: Xml.Element) {
+function runCompiler(xmlRoot: Xml.XmlElement) {
     // TODO: PARSE unit tag for namespaces
-
-    DDT.run(xmlRoot);
-    
+    console.log(xmlRoot.child(0)?.toString())
+    // DDT.run(xmlRoot);
+    // console.log(ControlFlowGraph.buildControlFlowGraph(xmlRoot.get(".//xmlns:function")).toString())
 }
 
 /**
@@ -20,7 +20,7 @@ function runCompiler(xmlRoot: Xml.Element) {
  * @param srcPath the path to the file as a string
  * @returns an xml object representing the file contents
  */
-function getFileXml(srcPath: string) : Xml.Element {
+function getFileXml(srcPath: string) : Xml.XmlElement {
     const fileExtension = srcPath.substring(srcPath.lastIndexOf("."))
     
     if (fileExtension !== ".xml") {
@@ -46,12 +46,12 @@ function main() : number {
     program.parse();    
 
     for (const inputFile of program.args) {
-        try {
+        // try {
             runCompiler(getFileXml(inputFile));
-        } catch (error) {
-            console.error(inputFile + ": " + error.message + "(" + error.name + ")");
+        // } catch (error) {
+            // console.error(inputFile + ": " + error.message + "(" + error.name + ")");
             return 1;
-        }
+        // }
     }
 
     return 0;

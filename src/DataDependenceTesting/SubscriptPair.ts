@@ -1,19 +1,19 @@
 
 import * as Xml from '../Xml/Xml.js'
 import { ArrayAccess } from './ArrayAccess.js';
-import { CFGraph } from './ControlFlowGraph.js';
+import { ControlFlowGraph } from './ControlFlowGraph.js';
 
 class SubscriptPair {
-    private subscript1: Xml.Element;
-    private subscript2: Xml.Element;
+    private subscript1: Xml.XmlElement;
+    private subscript2: Xml.XmlElement;
 
     private access1: ArrayAccess;
     private access2: ArrayAccess;
 
-    private enclosingLoops: Xml.Element[];
+    private enclosingLoops: Xml.ForLoop[];
 
-    constructor(subscript1: Xml.Element, subscript2: Xml.Element,
-        access1: ArrayAccess, access2: ArrayAccess, loops: Xml.Element[]) {
+    constructor(subscript1: Xml.XmlElement, subscript2: Xml.XmlElement,
+        access1: ArrayAccess, access2: ArrayAccess, loops: Xml.ForLoop[]) {
         this.subscript1 = subscript1;
         this.subscript2 = subscript2;
         this.access1 = access1;
@@ -30,7 +30,7 @@ class SubscriptPair {
                 this.access2.getAccessType() == ArrayAccess.write_access;
         } else {
             //TODO: use caching system
-            const cfg = CFGraph.buildControlFlowGraph(this.enclosingLoops[this.enclosingLoops.length - 1]);
+            const cfg = ControlFlowGraph.buildControlFlowGraph(this.enclosingLoops[this.enclosingLoops.length - 1]);
             return cfg.isReachable(stmt1, stmt2);
         }
     }
@@ -38,19 +38,19 @@ class SubscriptPair {
 
     public getComplexity() : number {
         let ret: number = 0;
-        this.enclosingLoops.forEach((loop: Xml.Loop) => {
-            const indexVar = loop.getLoopIndexVariableName().text;
+        this.enclosingLoops.forEach((loop: Xml.ForLoop) => {
+            const indexVar = loop.getLoopIndexVariableName()?.text ?? "";
             if (this.subscript1.containsName(indexVar) ||
                 this.subscript2.containsName(indexVar)) ret += 1;
         });
         return ret;
     }
 
-    public getEnclosingLoops() : Xml.Element[] {
+    public getEnclosingLoops() : Xml.XmlElement[] {
         return this.enclosingLoops;
     }
 
-    public getSubscript1() : Xml.Element {
+    public getSubscript1() : Xml.XmlElement {
         return this.subscript1;
     }
 
@@ -63,7 +63,7 @@ class SubscriptPair {
 
     }
 
-    public getSubscript2() : Xml.Element {
+    public getSubscript2() : Xml.XmlElement {
         return this.subscript2;
     }
 

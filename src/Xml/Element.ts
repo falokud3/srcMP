@@ -1,11 +1,19 @@
-import * as libxmljs2 from 'libxmljs2';
+
 import * as Xml from './Xml.js'
+
+import * as xpath from 'xpath';
+
+
 
 /**
  * Represents XML Element, like `<person/>`, not XML Comments or Attributes
  */
-export class Element {
-    private libxml: libxmljs2.Element; 
+export class XmlElement {
+    /**
+     * Represents Node from the DOM API that contorls the behavior of an element
+     */
+    private domNode: Element; 
+    
 
     /**
      * Offset needed to get the true line number of an xml element. This is caused by
@@ -14,47 +22,48 @@ export class Element {
      */
     static LINE_NUMBER_OFFSET = 1;
 
-    public constructor(libxml: libxmljs2.Element) {
-        this.libxml = libxml;
+    public constructor(libxml: Element) {
+        this.domNode = libxml;
     }
 
     /**
      * Returns the internal xml object used by the library
      * * Use of this is discouraged, due to the increase in coupling
      */
-    public get libraryXmlObject(): libxmljs2.Element {
-        return this.libxml;
+    public get domElement(): Element {
+        return this.domNode;
     }
 
     public get line(): number {
-        return this.libxml.line() - Element.LINE_NUMBER_OFFSET;
+        throw new Error("NOT IMPLEMENTED YET");
     }
 
     /**
      * Returns the text within an xml tag including the text of all child nodes
      */
     public get text() : string {
-        return this.libxml.text();
+        return this.domNode.textContent ?? "";
     }
 
     /**
      * Returns the text within the tag, like parent from `<parent/>`
      */
     public get name() : string {
-        return this.libxml.name();
+        return this.domNode.tagName;
     }
 
     /**
      * Returns an array of all the child Elements
      */
-    public get children() : Element[] {
-        const children = this.libxml.childNodes();
-        const ret: Element[] = [];
-        for (const childNode of children) {
-            if (!(childNode instanceof libxmljs2.Element)) {
+    public get elementChildren() : XmlElement[] {
+        const children = this.domNode.childNodes;
+        const ret: XmlElement[] = [];
+        for (const childNode of Array.from(children)) {
+            
+            if (!isDomElement(childNode)) {
                 continue;
             }
-            ret.push(new Element(childNode));
+            ret.push(new XmlElement(childNode));
         }
         return ret;
     }
@@ -63,88 +72,103 @@ export class Element {
      * Returns the parent Element of the caller or null if the Element has no
      * parent Element
      */
-    public get parent() : Element {
-        const ret = this.libxml.parent()
-        return (ret instanceof libxmljs2.Document) ? null : new Element(ret);
+    public get parentElement() : XmlElement | null {
+        return this.domNode.parentElement ? new XmlElement(this.domNode.parentElement) : null;
     }
 
     /**
      * Returns the previous sibling element or null
      */
-    public get prevElement() : Element {
-        const ret = this.libxml.prevElement();
-        return ret ? new Element(ret) : null;
+    public get prevElement() : XmlElement | null {
+        return this.domNode.previousElementSibling 
+            ? new XmlElement(this.domNode.previousElementSibling) : null;
     }
 
     /**
      * Returns the next sibling element or null
      */
-    public get nextElement() : Element {
-        const ret = this.libxml.nextElement();
-        return ret ? new Element(ret) : null;
+    public get nextElement() : XmlElement | null {
+        return this.domNode.nextElementSibling 
+            ? new XmlElement(this.domNode.nextElementSibling) : null;
+
     }
 
-    public child(index: number) : Element {
-        const children = this.children;
+    public child(index: number) : XmlElement | null {
+        const children = this.elementChildren;
         return children.length > 0 && index < children.length ? children[index] : null;
     }
 
     /**
      * Gets an XML Element based on xpath
-     * @param xpath 
+     * @param xpathString 
      * @param namespace 
      * @returns the first Element found or null if none are found
      */
-    public get(xpath: string, namespace: libxmljs2.StringMap = Xml.ns) : Element {
-        const queryResult = this.find(xpath, namespace);
+    public get(xpathString: string, namespace: Record<string, string> = Xml.ns) : XmlElement | null {
+        const queryResult = this.find(xpathString, namespace);
         return queryResult.length > 0 ? queryResult[0] : null;
     }
 
     /**
      * Gets XML Elements based on xpath
-     * @param xpath 
+     * @param xpathString 
      * @param namespace 
      * @returns an array of Element objects (empty if none are found)
      */
-    public find(xpath: string, namespace: libxmljs2.StringMap = Xml.ns) : Element[] {
-        const queryResult = this.libxml.find(xpath, namespace);
-        const ret: Element[] = [];
-        for (const node of queryResult) {
-            if (!(node instanceof libxmljs2.Element)) {
-                continue;
-            }
+    public find(xpathString: string, namespace: Record<string, string> = Xml.ns) : XmlElement[] {
+        // TODO: Experment with NS resolver to avoid xmlns: for everything
 
-            if (node.name() === "for") {
-                ret.push(new Xml.Loop(node));
-            } else {
-                ret.push(new Element(node));
-            } 
+        const namespaceSelect = xpath.useNamespaces(namespace)
+        const queryResult = namespaceSelect(xpathString, this.domNode, false);
+
+        if (queryResult instanceof Node) {
+            if (isDomElement(queryResult)) {
+                if (queryResult.tagName === "for") {
+                    return [new Xml.ForLoop(queryResult)];
+                } else {
+                    return [new XmlElement(queryResult)];
+                }
+            }
+        } else if (Array.isArray(queryResult)) {
+            const ret: XmlElement[] = [];
+            for (const node of queryResult) {
+                if (isDomElement(node)
+                    && node.tagName === "for") {
+                    return [new Xml.ForLoop(node)];
+                } else if (isDomElement(node)) {
+                    return [new XmlElement(node)];
+                }
+            }
+            return ret;
         }
-        return ret;
+
+        return [];
     }
+
+    // TODO : Allow use of xpath boolean, number, string values
 
     /**
      * Returns whether an element contains the xpath passed in 
-     * @param xpath 
+     * @param xpathString 
      * @param namespace 
      * @returns true if contains, false otherwise
      */
-    public contains(xpath: string, namespace: libxmljs2.StringMap = Xml.ns) : boolean {
-        return this.get(xpath, namespace) != null
+    public contains(xpathString: string, namespace: Record<string, string> = Xml.ns) : boolean {
+        return this.get(xpathString, namespace) != null
     }
 
     /**
      * Checks if the XML element contains a name node with specified text
-     * @param xpath
+     * @param xpathString
      * @param namespace 
      * @returns 
      */
-    public containsName(xpath: string, namespace: libxmljs2.StringMap = Xml.ns) : boolean {
-        return this.libxml.find(`.//xmlns:name[text()='${xpath}']`, namespace).length != 0;
+    public containsName(xpathString: string, namespace: Record<string, string> = Xml.ns) : boolean {
+        return this.find(`.//xmlns:name[text()='${xpathString}']`, namespace).length != 0;
     }
 
-    public getAttribute(name: string) : string {
-        return this.libxml.attr(name).value()
+    public getAttribute(name: string) : string | null {
+        return this.domNode.getAttribute(name);
     }
 
     /**
@@ -153,26 +177,85 @@ export class Element {
      * @param value the value to set the attribute
      */
     public setAttribute(name: string, value: string) : void {
-        this.libxml.attr(name, value);
+        this.domNode.setAttribute(name, value);
     }
 
     /**
-     * Replace the Xml of an element with the Xml of another
-     * @param newElement 
+     * Returns the function that directly enclosing the calling element. If the
+     * object is not nested within a function, it returns the root element of 
+     * the document, which should be the `<unit>` tag
+     * @returns 
      */
-    public replace(newElement: Element) : void {
-        this.libxml.replace(newElement.libxml);
+    public get enclosingFunction() : XmlElement | null {
+        const func = this.find("./ancestor::xmlns:function");
+        if (func.length > 0) {
+            return func[-1];
+        } else {
+            const root = this.domElement.getRootNode()
+            return isDomElement(root) ? new XmlElement(root) : null
+        }
+    }
+
+    public toString() : string {
+        return this.domNode.toString();
     }
 
     /**
      * Decided to not use lodash to reduce number of dependecies
      * @param otherElement 
-     * @returns 
      */
-    public equals(otherElement: Element) : boolean {
-        return this.libxml.toString() === otherElement.libxml.toString()
-            && this.line === otherElement.line
-            && this.libxml.doc().toString() === otherElement.libxml.doc().toString();
+    public equals(otherElement: XmlElement) : boolean {
+        return this.toString() === otherElement.toString();
     }
 
+
+    /**
+     * Returns all the symobs
+     */
+    public get defSymbols() : Set<Xml.XmlElement> {
+        const ret = new Set<Xml.XmlElement>();
+        for (const name of this.defList) {
+            const innerName = name.get("./xmlns:name")
+            ret.add(innerName ? innerName : name);
+        }
+        return ret;
+    }
+
+    /**
+     * Returns a list of all the instances of identifiers be assigned within the
+     * element. They are returned as the outermost `<name>` tag, so arrays will 
+     * have their index and objects will contain their . operators
+     */
+    public get defList() : Xml.XmlElement[] {
+        const defList: Xml.XmlElement[] = [];
+        const names = this.find(".//xmlns:name[count(ancestor::xmlns:name)=0]");
+        for (const name of names) {
+            const nextOp = name.nextElement;
+            const prevOp = name.prevElement;
+
+            if (prevOp?.name === "operator" 
+            && (prevOp?.text === "--" || prevOp?.text === "++")) {
+                defList.push(name);
+            }
+
+            if (nextOp?.name === "operator" 
+            && ([...nextOp?.text].filter((char) => char === '=' ).length === 1
+                || nextOp?.text === "--" || nextOp?.text === "++")) {
+                defList.push(name);
+            }
+            
+        }
+        return defList;
+
+    }
+
+}
+
+/**
+ * Returns true if the DOM Node passed in is an element
+ * 
+ * Needed due to fact that the DOM API does not acutally exist on Node
+ */
+function isDomElement(node: Node): node is Element {
+    return node.nodeType === node.ELEMENT_NODE;
 }

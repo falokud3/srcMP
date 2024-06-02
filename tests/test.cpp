@@ -9,14 +9,20 @@
 
 int main(){
 
+  int i = 0;
+  i = i + 1;
+  int z = 1;
+
   float a[1000], b[1000];
+  // int i = 0;
+  // i = 3;
+  // int x = 1;
+  // int y = x;
+  // int z = 5;
   
-  for (int i=1; 1000<i + 1; i++) {
+  for (i = 1; i<1000 ; i += z) {
     a[i]= b[i];
   }
-
-  for (;;) {
-  }
-
+	
    return 0;
 }

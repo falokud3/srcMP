@@ -2,28 +2,35 @@
 /**
  * Abstract interface for XML interaction to reduce coupling
  * 
- * ! Current Library (5/21/2023): libxmljs2 (has a high vulnerability)
+ * Current Libraries (6/2/2024)
+ * * @xmldom/xmldom - for parsing xml to document object model (dom)
+ * * xpath - for utilizing xpath queries
  */
 
 import { readFileSync } from 'fs';
-import * as libxmljs2 from 'libxmljs2';
-import { Element as xmlElement } from './Element.js';
-import assert from "assert";
+
+import { XmlElement } from './Element.js';
+import { assert } from 'console';
+import { DOMParser } from '@xmldom/xmldom';
 
 export * from './Element.js'
-export * from './Loop.js'
+export * from './ForLoop.js'
 export * from './Expression.js'
 
 // namespace
-export const ns: libxmljs2.StringMap = {'xmlns': 'http://www.srcML.org/srcML/src'}
+export const ns: any = {'xmlns': 'http://www.srcML.org/srcML/src'}
 
-export function parseXmlFile(filePath: string) {
+export function parseXmlFile(filePath: string) : XmlElement {
     return parseXmlString(readFileSync(filePath).toString());
 }
 
-export function parseXmlString(xmlString: string) {
-    const doc = libxmljs2.parseXmlString(xmlString);
-    return new xmlElement(doc.root());
+export function parseXmlString(xmlString: string) : XmlElement {
+    const document = new DOMParser().parseFromString(xmlString);
+    const root = document.documentElement;
+    if (root) {
+        return new XmlElement(root);
+    }
+    throw new Error("Could not parse Xml String");
 }
 
 /**
@@ -31,7 +38,7 @@ export function parseXmlString(xmlString: string) {
  * otherwise
  * @param nameNode 
  */
-export function isComplexName(nameNode: xmlElement) : boolean {
+export function isComplexName(nameNode: XmlElement) : boolean {
     assert(nameNode.name === "name");
     return nameNode.contains("./xmlns:operator") 
         || nameNode.contains("./xmlns:index");

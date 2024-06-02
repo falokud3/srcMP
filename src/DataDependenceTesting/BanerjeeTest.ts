@@ -5,9 +5,9 @@ import * as Xml from '../Xml/Xml.js';
 
 
 class BanerjeeTest {
-    private subscript1: Xml.Element;
-    private subscript2: Xml.Element;
-    private loopnest: Xml.Element[];
+    private subscript1: Xml.XmlElement;
+    private subscript2: Xml.XmlElement;
+    private loopnest: Xml.XmlElement[];
     private pair: SubscriptPair;
     private bounds: Map<string, number[]>;
     private const1;
@@ -41,8 +41,8 @@ class BanerjeeTest {
             const decl = loop.get("./xmlns:control/xmlns:init/xmlns:decl", Xml.ns);
             // const coeff_node = <Xml.Element> decl.get("./xmlns:init/xmlns:expr/xmlns:literal", Xml.ns);
             // const coeff = parseInt(coeff_node.text);
-            const index_node = decl.get("./xmlns:name", Xml.ns);
-            idList.push(index_node.text)
+            const index_node = decl!.get("./xmlns:name", Xml.ns);
+            idList.push(index_node!.text)
 
         }
 
@@ -60,11 +60,11 @@ class BanerjeeTest {
             const B = 1;
 
             const up_node = this.loopnest[i].get("./xmlns:control/xmlns:condition/xmlns:expr/xmlns:literal", Xml.ns);
-            const U = parseInt(up_node.text);
+            const U = parseInt(up_node!.text);
             
             const decl = this.loopnest[i].get("./xmlns:control/xmlns:init/xmlns:decl", Xml.ns);
-            const coeff_node = decl.get("./xmlns:init/xmlns:expr/xmlns:literal", Xml.ns);
-            const L = parseInt(coeff_node.text);
+            const coeff_node = decl!.get("./xmlns:init/xmlns:expr/xmlns:literal", Xml.ns);
+            const L = parseInt(coeff_node!.text);
 
 
             // ! FIX
@@ -103,7 +103,7 @@ class BanerjeeTest {
 
     }
 
-    public getConstCoeff(subscript: Xml.Element) : number {
+    public getConstCoeff(subscript: Xml.XmlElement) : number {
         const lit = subscript.get("./xmlns:expr/xmlns:literal", Xml.ns);
         if (lit) {
             const number = parseInt(lit.text)
@@ -129,8 +129,8 @@ class BanerjeeTest {
             const dir = dv.getDirection(loop, true);
             const loopBounds = this.bounds.get(loop.text);
 
-            LB += loopBounds[BanerjeeTest.LB];
-            UB += loopBounds[BanerjeeTest.UB];
+            LB += loopBounds![BanerjeeTest.LB];
+            UB += loopBounds![BanerjeeTest.UB];
         }
 
         // console.log(this.pair.toString())
