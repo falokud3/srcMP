@@ -7,11 +7,9 @@ import { execSync } from 'child_process';
 
 
 
-function runCompiler(xmlRoot: Xml.XmlElement) {
+function runCompiler(xmlRoot: Xml.Element) {
     // TODO: PARSE unit tag for namespaces
-    console.log(xmlRoot.child(0)?.toString())
-    // DDT.run(xmlRoot);
-    // console.log(ControlFlowGraph.buildControlFlowGraph(xmlRoot.get(".//xmlns:function")).toString())
+    DDT.run(xmlRoot);
 }
 
 /**
@@ -20,7 +18,7 @@ function runCompiler(xmlRoot: Xml.XmlElement) {
  * @param srcPath the path to the file as a string
  * @returns an xml object representing the file contents
  */
-function getFileXml(srcPath: string) : Xml.XmlElement {
+function getFileXml(srcPath: string) : Xml.Element {
     const fileExtension = srcPath.substring(srcPath.lastIndexOf("."))
     
     if (fileExtension !== ".xml") {

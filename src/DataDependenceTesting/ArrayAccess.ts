@@ -1,54 +1,59 @@
 import * as Xml from '../Xml/Xml.js'
 
-class ArrayAccess {
+export type ArrayAccessType = "Write" | "Read";
 
-    // ? should this be an enum??
+export class ArrayAccess {
 
-    public static readonly write_access: string = "Write";
-    public static readonly read_access: string = "Read";
+    public static readonly WRITE_ACCESS: ArrayAccessType = "Write";
+    public static readonly READ_ACCESS: ArrayAccessType = "Read";
 
-    private access_type: string;
-    private access_expr: Xml.XmlElement;
-    private enclosing_loop: Xml.ForLoop;
-    private parent_stmt: Xml.XmlElement;
+    private access_type: ArrayAccessType;
+    private access: Xml.Element;
      
-    constructor(access_type: string, access_expr: Xml.XmlElement,
-        enclosing_loop: Xml.ForLoop, parent_stmt: Xml.XmlElement) {
-        this.access_type = access_type;
-        this.access_expr = access_expr;
-        this.enclosing_loop = enclosing_loop;
-        this.parent_stmt = parent_stmt;
+    constructor(access: Xml.Element, accessType: ArrayAccessType) {
+        this.access = access;
+        this.access_type = accessType;
+    }
+
+    get arrayName() : string {
+        return this.access.get('xmlns:name')!.text;
+    }
+
+    get enclosingLoop() : Xml.ForLoop | undefined {
+        const enclosing_loops = <Xml.ForLoop[]> this.access.find("ancestor::xmlns:for", Xml.ns);
+        return enclosing_loops.at(-1);
+    }
+
+    public get parentStatement() : Xml.Element {
+        return this.access.parentElement!;
     }
     
     public getArrayDimensionality() : number {
-        return this.access_expr.find("xmlns:index", Xml.ns).length;
+        return this.access.find("xmlns:index", Xml.ns).length;
     }
 
-    public getDimension(dimension: number) : Xml.XmlElement | null {
-        return this.access_expr.get(`xmlns:index[${dimension}]`, Xml.ns);
+    public getDimension(dimension: number) : Xml.Element | null {
+        return this.access.get(`xmlns:index[${dimension}]`, Xml.ns);
     }
 
     // TODO: getters & setters
-    public getAccessType() : string {
+    public getAccessType() : ArrayAccessType {
         return this.access_type;
     }
 
-    public getEnclosingLoop() : Xml.ForLoop {
-        return this.enclosing_loop;
+    public equals(other: ArrayAccess) : boolean {
+        return this.access.equals(other.access)
+            && this.access_type === other.access_type;
     }
 
-    public get parentStatement() : Xml.XmlElement {
-        return this.parent_stmt;
-    }
+    
     // mayble: get loop nest of enclosing list
 
     public toString(): string {
         let ret: string = "[Array Access] ";
-        ret += "Access Expression: " + this.access_expr.text + " ";
-        ret += "Access Type: " + (this.access_type == ArrayAccess.write_access ? "Write" : "Read") + " ";
+        ret += "Access Expression: " + this.access.text + " ";
+        ret += "Access Type: " + (this.access_type == ArrayAccess.WRITE_ACCESS ? "Write" : "Read") + " ";
         return ret;
     }
 
 }
-
-export {ArrayAccess}

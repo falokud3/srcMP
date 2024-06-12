@@ -7,7 +7,7 @@
     "test": "tests"
   },
   "scripts": {
-    "lint": "eslint --ext .ts --ignore-path .gitignore ."
+    "fastbuild": "sucrase ./src -d ./build --transforms typescript --quiet"
   },
   "bin": {
     "srccetus": "./build/index.js"
@@ -17,6 +17,7 @@
   "license": "ISC",
   "devDependencies": {
     "@types/node": "^20.8.6",
+    "sucrase": "^3.35.0",
     "typescript": "^5.4.5"
   },
   "dependencies": {

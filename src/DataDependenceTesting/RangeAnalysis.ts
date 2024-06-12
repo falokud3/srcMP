@@ -9,34 +9,31 @@ import * as ComplexMath from '../ComputerAlgebraSystem.js'
 // * JS would store a reference not the value
 const rangeDomains = new Map<string, RangeDomain>();
 
-export function getRanges(stmt: Xml.XmlElement) {
-    assert(stmt.name === "function" || stmt.name === "unit");
+export function getRanges(root: Xml.Element) : Map<string, RangeDomain> {
+    assert(root.name === "function" || root.name === "unit");
 
     // TODO : ALIAS AnALYSIS
 
-    const cfg = CFG.buildControlFlowGraph(stmt);
-    // console.log(cfg.toString());
+    const cfg = CFG.buildControlFlowGraph(root);
 
     cfg.topologicalSort();
     iterateToFixpoint(cfg, true);
-    console.log(cfg.toString());
-    iterateToFixpoint(cfg, false);
+    // iterateToFixpoint(cfg, false);
 
-    // getRangeMap
-    // console.log(cfg.toString());
-
-
-    // return rangeMap
+    // TODO: FILTER UNSAFE RANGES
+    return cfg.getRangeMap(root);
 
 }
 
-export function query(stmt: Xml.XmlElement) : RangeDomain {
-    return new RangeDomain();
-    // let ret = rangeDomains.get(stmt.toString());
-    // if (!ret) {
-    //     getRanges(stmt.enclosingFunction)
-    // }
-    // return ret;
+export function query(stmt: Xml.Element) : RangeDomain | null {
+    let ret = rangeDomains.get(`${stmt.line} ${stmt.text}`);
+    if (!ret) {
+        getRanges(stmt.enclosingFunction).forEach((rangeDomain, key) => {
+            rangeDomains.set(key, rangeDomain);
+        });
+        ret = rangeDomains.get(`${stmt.line} ${stmt.text}`);
+    }
+    return ret ?? null;
 }
 
 // TODO: Review
@@ -92,14 +89,17 @@ function iterateToFixpoint(graph: CFG, widen: boolean = false) : void {
 function updateRanges(node: CFNode) : void {
 
     // TODO: InterProceduralAnalysis and Function Calls
-
-    // TODO: DECL
     if ((node.xml.name === "decl_stmt" && node.xml.get("./xmlns:decl/xmlns:init")) || (node.xml.get("./xmlns:expr/xmlns:operator") 
-        && [...node.xml.get("./xmlns:expr/xmlns:operator")!.text].filter((char) => char === '=' ).length === 1)) {
+        && [...node.xml.get("./xmlns:expr/xmlns:operator")!.text].filter((char) => char === '=' ).length === 1)
+        || (node.xml.name === "init")) {
+        // TODO: SPLIT BASED ON NODE TYPE
         updateAssignment(node);
-    } else if (node.xml.name === "condition" && node.xml.contains("parent::switch")) {
+    // } else if (node.xml.name === "incr") {
+
+        // basically update assignment but handle ++ --
+    // } else if (node.xml.name === "condition" && node.xml.contains("parent::switch")) {
         // update switch
-    } else if (node.xml.name === "condition") {
+    // } else if (node.xml.name === "condition") {
         // update condition
     } else {
         updateSafeNode(node);
@@ -113,18 +113,19 @@ function updateAssignment(node: CFNode) : void {
     // TODO: Handle multiple assignment (ie multiple to's)
     const to = node.xml.get(".//xmlns:name[not(parent::xmlns:type)]");
     if (!to) return;
-    let from: Xml.XmlElement;
+    let from: Xml.Element;
     let direction: AssignmentDirection;
     if (node.xml.name === "decl_stmt") {
         from = node.xml.get(".//xmlns:init/xmlns:expr")!;
-    } else if (node.xml.name === "expr_stmt") {
+    } else if (node.xml.name === "expr_stmt" || node.xml.name === "init") {
+        // TODO: replace with Xml.Expression.getRHS
         const expr = node.xml.get("./xmlns:expr");
         if (!expr) throw new Error("IMPROPER SRCML");
-        let assignOpIndex = expr.elementChildren.findIndex( (child: Xml.XmlElement) => {
+        let assignOpIndex = expr.childElements.findIndex( (child: Xml.Element) => {
             return [...child.text].filter((char) => char === '=' ).length === 1
         });
         let rhsString: string = "";
-        for (let i = assignOpIndex + 1; i < expr.elementChildren.length; i++) {
+        for (let i = assignOpIndex + 1; i < expr.childElements.length; i++) {
             rhsString += expr.child(i)!.text;
         }
 
@@ -135,32 +136,38 @@ function updateAssignment(node: CFNode) : void {
 
         const rhsRoot = Xml.parseXmlString(buffer.toString());
 
-        from = rhsRoot.get("./xmlns:expr")!;
-    } else if (node.xml.name === "init") {
-        from = node.xml.get("./xmlns:expr")!;
+        from = expr.copy()
+        const kiddos = Array.from(from.domElement.childNodes);
+        const aopi = kiddos.findIndex((node) => {
+            return [...(node.textContent ?? "")].filter((char) => char === '=' ).length === 1
+        });
+        for (let i = 0; i <= aopi; i++) {
+            from.domElement.removeChild(kiddos[i]);
+        }
+
     }
 
     if (from! === undefined) return;
 
     // simplify expr
-    // const simplifeidFrom = ComplexMath.simplifyXml(from)
-    const simplifeidFrom = from;
+    const simplifiedFrom = ComplexMath.simplifyXml(from)!;
 
    // TODO: DEREFERENCE
 
    let inverted;
     if (!isTractableType(to)) {
         direction = "nochange";
-    } else if (!isTractableRange(from, simplifeidFrom)) {
+    } else if (!isTractableRange(from, simplifiedFrom)) {
         direction = "kill";
     } else if (!from.contains(`.//xmlns:name[text()='${to.text}']`)
-        || !simplifeidFrom.contains(`.//name[text()='${to.text}']`)) {
+        || !simplifiedFrom.contains(`.//xmlns:name[text()='${to.text}']`)) {
         direction = "normal";
     } else {
-         inverted = ComplexMath.invertExpression(to, simplifeidFrom);
+         inverted = ComplexMath.invertExpression(to, simplifiedFrom);
         if (!inverted) {
             direction = "recurrence"
-        } else if (inverted.contains(".//xmlns:name/xmlns:index")) {
+        // } else if (inverted.contains(".//xmlns:name/xmlns:index")) {
+        } else if (inverted.text.includes("[")) {
             direction = "kill"
         } else {
             direction = "invertible"
@@ -180,11 +187,9 @@ function updateAssignment(node: CFNode) : void {
         let expandedFrom: string;
         if (direction === "invertible" 
             || direction === "recurrence") {
-            expandedFrom = outRanges.getExpandedExpression(simplifeidFrom, to) ?? simplifeidFrom.text;
+            expandedFrom = outRanges.getExpandedExpression(simplifiedFrom, to) ?? simplifiedFrom.text;
             outRanges.expandRangeExpressions(to);
         }
-
-        
 
         outRanges.replaceSymbol(to, replacer);
         outRanges.removeRecurrence();
@@ -192,8 +197,8 @@ function updateAssignment(node: CFNode) : void {
         if (direction === "kill") {
             outRanges.removeRange(to.text);
         } else {
-            outRanges.setRange(to.text, expandedFrom! ?? simplifeidFrom.text,
-                expandedFrom! ?? simplifeidFrom.text);
+            outRanges.setRange(to.text, expandedFrom! ?? simplifiedFrom.text,
+                expandedFrom! ?? simplifiedFrom.text);
         }
         
     }
@@ -229,7 +234,7 @@ function updateUnsafeNode(node: CFNode) : void {
     }
 }
 
-function isTractableType(variable: Xml.XmlElement) : boolean {
+function isTractableType(variable: Xml.Element) : boolean {
     assert(variable.name === "name")
     // find the variable's declaration
     // ! this won't work for python esque languages
@@ -240,7 +245,7 @@ function isTractableType(variable: Xml.XmlElement) : boolean {
 
     // get type
     // NOTE: COULD IMPROVE BY USING DECL_STMT TO GET TYPE INSTEAD OF LOOP
-    let type : Xml.XmlElement = decl.get("./xmlns:type")!;
+    let type : Xml.Element = decl.get("./xmlns:type")!;
     if (!type) return false;
     while (type.getAttribute("ref") === "prev") {
         type = decl.prevElement!.get("./xmlns:type")!;
@@ -251,7 +256,7 @@ function isTractableType(variable: Xml.XmlElement) : boolean {
     
 }
 
-function isTractableRange(expression: Xml.XmlElement, simplifiedExpr: Xml.XmlElement) : boolean {
+function isTractableRange(expression: Xml.Element, simplifiedExpr: Xml.Element) : boolean {
     // check if all number literals are within range
     const nums = expression.find(".//xmlns:literal[@type='number']");
     for (const num of nums) {
@@ -284,7 +289,7 @@ function isTractableRange(expression: Xml.XmlElement, simplifiedExpr: Xml.XmlEle
 }
 
 // returns true if not object member or array access
-function isSimpleIdentifier(name: Xml.XmlElement) : boolean {
+function isSimpleIdentifier(name: Xml.Element) : boolean {
     assert(name.name === "name");
     return !name.contains("./xmlns:name");
 }

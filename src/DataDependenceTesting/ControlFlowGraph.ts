@@ -70,7 +70,7 @@ export class ControlFlowGraph {
         this.nodes = newOrder;
     }
 
-    public isReachable(stmt1: Xml.XmlElement, stmt2: Xml.XmlElement) : boolean {
+    public isReachable(stmt1: Xml.Element, stmt2: Xml.Element) : boolean {
         
         let from: ControlFlowNode | null = null;
         let to: ControlFlowNode | null = null;
@@ -79,7 +79,7 @@ export class ControlFlowGraph {
         const s1 = stmt1.parentElement
         const s2 = stmt2.parentElement
 
-        if (!s1 || !s2) return false;
+        if (!s1 || !s2) return true;
 
         for (const node of this.nodes) {
             // ! POTENTIAL ISSUE WITH IDENTICAL STATEMENTS
@@ -95,7 +95,7 @@ export class ControlFlowGraph {
         return to.getOrder() > -1;
     }
 
-    public static buildControlFlowGraph(src: Xml.XmlElement) : ControlFlowGraph {
+    public static buildControlFlowGraph(src: Xml.Element) : ControlFlowGraph {
         const graph = new ControlFlowGraph();
         const newGraph: ControlFlowNode | null = ControlFlowGraph.buildGraph(src);
         if (newGraph) {
@@ -104,13 +104,13 @@ export class ControlFlowGraph {
         return graph;
     }
 
-    private substituteAll(src: Xml.XmlElement) : Xml.XmlElement {
+    private substituteAll(src: Xml.Element) : Xml.Element {
         throw new Error("NOT IMPLEMEnteD")
         // for (const node of this.nodes) {
         //     // // ! NEED TO ESCAPE STRINGS IN .text
 
         //     const srcNodes = src.find(`.//xmlns:${node.xml.name}`, Xml.ns);
-        //     let src_node: Xml.XmlElement | null = null
+        //     let src_node: Xml.Element | null = null
         //     for (const srcNode of srcNodes) {
         //         if (srcNode.text === node.xml.text) {
         //             src_node = node.xml;
@@ -142,7 +142,7 @@ export class ControlFlowGraph {
 
     }
 
-    private static buildGraph(src: Xml.XmlElement) : ControlFlowNode | null {
+    private static buildGraph(src: Xml.Element) : ControlFlowNode | null {
         let type: string = src.name;
         if (type === "function") {
             return ControlFlowGraph.buildFunction(src);
@@ -191,15 +191,15 @@ export class ControlFlowGraph {
         }
     }
 
-    private static buildFunction(func: Xml.XmlElement) : ControlFlowNode | null {
+    private static buildFunction(func: Xml.Element) : ControlFlowNode | null {
         const block = func.get("./xmlns:block", Xml.ns);
         return ControlFlowGraph.buildBlock(block!);
     }
 
-    private static buildBlock(block: Xml.XmlElement) : ControlFlowNode {
+    private static buildBlock(block: Xml.Element) : ControlFlowNode {
         const blockContent = block.get("./xmlns:block_content", Xml.ns)!;
         let ret: ControlFlowNode | null = null;
-        const children = blockContent.elementChildren
+        const children = blockContent.childElements
 
         for (const child of children) {
             // TODO: Skippable Nodes Refactor
@@ -225,8 +225,8 @@ export class ControlFlowGraph {
         return ret ? ret : new ControlFlowNode(blockContent);
     }
 
-    private static buildUnit(unit: Xml.XmlElement) : ControlFlowNode {
-        const children = unit.elementChildren;
+    private static buildUnit(unit: Xml.Element) : ControlFlowNode {
+        const children = unit.childElements;
         let ret: ControlFlowNode | null = null;
 
         for (const child of children) {
@@ -257,10 +257,10 @@ export class ControlFlowGraph {
     // the chosen approach may mess up the tails on the internal conds, but
     // those aren't relevant to the build process and tails should not be used
     // for tree traversal
-    private static buildIf(ifStmt: Xml.XmlElement) : ControlFlowNode {
+    private static buildIf(ifStmt: Xml.Element) : ControlFlowNode {
         // initial if
         const tail: ControlFlowNode[] = [];
-        let ifXml: Xml.XmlElement | null = ifStmt.elementChildren[0];
+        let ifXml: Xml.Element | null = ifStmt.childElements[0];
 
         const firstCondXml = ifXml.get("./xmlns:condition", Xml.ns)!;
         const firstCond = ControlFlowGraph.buildGraph(firstCondXml)!;
@@ -292,10 +292,10 @@ export class ControlFlowGraph {
         return firstCond;
     }
     
-    private static buildCase(caseStmt: Xml.XmlElement) : ControlFlowNode {
+    private static buildCase(caseStmt: Xml.Element) : ControlFlowNode {
         const caseNode = new ControlFlowNode(caseStmt);
 
-        let curr: Xml.XmlElement | null = caseStmt;
+        let curr: Xml.Element | null = caseStmt;
         while (curr = curr.nextElement) {
             if (curr.name === "case" || curr.name === "default") break;
             // TODO: Skippable Nodes Refactor
@@ -312,14 +312,14 @@ export class ControlFlowGraph {
         return caseNode;
     }
 
-    private static buildSwitch(switchStmt: Xml.XmlElement) : ControlFlowNode {
+    private static buildSwitch(switchStmt: Xml.Element) : ControlFlowNode {
         const condXml = switchStmt.get("./xmlns:condition", Xml.ns)!;
         const cond = ControlFlowGraph.buildGraph(condXml)!;
 
         let hasDefaultCase: boolean = false;
         const casesXml = switchStmt.get("./xmlns:block/xmlns:block_content", Xml.ns)!
-            .elementChildren
-            .filter((node: Xml.XmlElement) => {
+            .childElements
+            .filter((node: Xml.Element) => {
                 if (node.name == "case") return true;
                 if (node.name == "default") {
                     hasDefaultCase = true;
@@ -346,7 +346,7 @@ export class ControlFlowGraph {
         return cond;
     }
 
-    private static buildWhile(whileStmt: Xml.XmlElement) : ControlFlowNode {
+    private static buildWhile(whileStmt: Xml.Element) : ControlFlowNode {
 
         const condition = whileStmt.get("./xmlns:condition", Xml.ns)!;
         const condNode = ControlFlowGraph.buildGraph(condition)!;
@@ -367,7 +367,7 @@ export class ControlFlowGraph {
     }
 
     // ! Assume for loop always has two semicolons
-    private static buildFor(forstmt: Xml.XmlElement) : ControlFlowNode {
+    private static buildFor(forstmt: Xml.Element) : ControlFlowNode {
 
         const initXml = forstmt.get("./xmlns:control/xmlns:init", Xml.ns)!;
         const initNode = ControlFlowGraph.buildGraph(initXml)!;
@@ -397,7 +397,7 @@ export class ControlFlowGraph {
         return initNode;
     }
 
-    private static buildDo(doStmt: Xml.XmlElement) : ControlFlowNode {
+    private static buildDo(doStmt: Xml.Element) : ControlFlowNode {
 
         const blockXml = doStmt.get("./xmlns:block", Xml.ns)!;
         const blockNode = ControlFlowGraph.buildBlock(blockXml)!;
@@ -428,7 +428,7 @@ export class ControlFlowGraph {
         }
     }
 
-    private static buildLabel(labelStmt: Xml.XmlElement) : ControlFlowNode {
+    private static buildLabel(labelStmt: Xml.Element) : ControlFlowNode {
         const labelNode = new ControlFlowNode(labelStmt);
         const labelNameXml = labelStmt.get("./xmlns:name", Xml.ns)!;
         this.labelNodes.set(labelNameXml.text, labelNode);
@@ -445,7 +445,7 @@ export class ControlFlowGraph {
         return labelNode;
     }
 
-    private static buildGoto(gotoStmt: Xml.XmlElement) : ControlFlowNode {
+    private static buildGoto(gotoStmt: Xml.Element) : ControlFlowNode {
         const gotoNode = new ControlFlowNode(gotoStmt);
         const labelNameXml = gotoStmt.get("./xmlns:name", Xml.ns)!;
         const labelNode = ControlFlowGraph.labelNodes.get(labelNameXml.text);
@@ -458,8 +458,29 @@ export class ControlFlowGraph {
         return gotoNode;
     }
 
-    public getRanges() : void {
+    public getRangeMap(node: Xml.Element) : Map<string, RangeDomain> {
+        const ret = new Map<string, RangeDomain>();
 
+        for (const node of this.nodes) {
+            const ranges = node.getRanges();
+            ret.set(`${node.xml.line} ${node.xml.text}`, ranges);
+            for (const subkey of ControlFlowGraph.getSubKeys(node.xml)) {
+                ret.set(subkey, ranges);
+            }
+        }
+
+        return ret;
+    }
+
+    public static getSubKeys(node: Xml.Element) : string[] {
+        let ret: string[] = [];
+
+        for (const child of node.childElements) {
+            ret.push(`${child.line} ${child.text}`);
+            ret.push(...ControlFlowGraph.getSubKeys(child));
+        }
+
+        return ret;
     }
 
 
@@ -481,7 +502,7 @@ export class ControlFlowNode {
     private tail: ControlFlowNode[]; // used exclusively for build process then deleted
     private connectable: boolean = true;
 
-    private _xml: Xml.XmlElement;
+    private _xml: Xml.Element;
 
     private outEdges: ControlFlowNode[];
     private inEdges: ControlFlowNode[];
@@ -495,9 +516,9 @@ export class ControlFlowNode {
     public outRanges: Map<ControlFlowNode, RangeDomain> = new Map<ControlFlowNode, RangeDomain>();
 
     private backedge: boolean | undefined;
-    public loopVariants: Set<Xml.XmlElement> | undefined = undefined;
+    public loopVariants: Set<Xml.Element> | undefined = undefined;
 
-    public constructor(data: Xml.XmlElement) {
+    public constructor(data: Xml.Element) {
         this._xml = data
         this.outEdges = [];
         this.inEdges = [];
@@ -552,7 +573,7 @@ export class ControlFlowNode {
         return this.outEdges;
     }
 
-    public get xml() : Xml.XmlElement {
+    public get xml() : Xml.Element {
         return this._xml;
     }
 

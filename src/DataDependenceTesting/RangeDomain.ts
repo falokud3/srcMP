@@ -1,5 +1,6 @@
 import { assert } from 'console';
 import * as Xml from '../Xml/Xml.js'
+import * as ComputerAlgebraSystem from '../ComputerAlgebraSystem.js'
 
 export class RangeDomain {
     private ranges: Map<string, Range>;
@@ -16,9 +17,8 @@ export class RangeDomain {
         return copy;
     }
 
-    public getRange(variable: string) : Range {
+    public getRange(variable: string) : Range | undefined {
         const range = this.ranges.get(variable);
-        if (!range) throw new Error("Range not found");
         return range;
     }
 
@@ -34,7 +34,7 @@ export class RangeDomain {
         this.ranges.set(variable, varrange);
     }
 
-    public killArraysWith(symbol: Xml.XmlElement) {
+    public killArraysWith(symbol: Xml.Element) {
         assert(symbol.name === "name")
         const symbolName = symbol.text
         for (const range of this.ranges) {
@@ -55,41 +55,60 @@ export class RangeDomain {
         }
     }
 
-    public replaceSymbol(original: Xml.XmlElement, replacement: Xml.XmlElement | Range | undefined | null) {
+    public replaceSymbol(original: Xml.Element, replacement: Xml.Element | Range | undefined | null) {
         if (!replacement) return;
 
         for (const range of this.ranges) {
             if (replacement instanceof Range) {
                 if (replacement.isConstant) {
+
+                    //! i replacing integer
+                    //TODO: FIX
                     range[1].lowerbound = range[1].lowerbound.replace(original.text, replacement.lowerbound)
                     range[1].upperbound = range[1].upperbound.replace(original.text, replacement.upperbound)
                 }
             } else {
+                //TODO: FIX
                 range[1].lowerbound = range[1].lowerbound.replace(original.text, replacement.text)
                 range[1].upperbound = range[1].upperbound.replace(original.text, replacement.text)
             }
         }
     }
 
+    public substituteForward(expression: Xml.Element) : string | number {
+        const vars = expression.find("./descendant-or-self::xmlns:name[not(parent::xmlns:name)]");
+        let ret = expression.text;
+        for (const variable of vars) {
+            const expanded = this.getExpandedExpression(ret, variable.text);
+            if (expanded) ret = expanded;
+        }
+        const number = Number(ret);
+        return number ? number : ret;
+    }
+
     // returns the expression with all occurances of the specified variable replaced with
     // their value ranges
-    public getExpandedExpression(expression: Xml.XmlElement | string, variable: Xml.XmlElement | string) : string | null {
+    public getExpandedExpression(expression: Xml.Element | string, variable: Xml.Element | string) : string | null {
 
-        if (expression instanceof Xml.XmlElement && variable instanceof Xml.XmlElement) {
+        if (expression instanceof Xml.Element && variable instanceof Xml.Element) {
             const range = this.getRange(variable.text);
-            return range && range.isConstant ? expression.text.replace(variable.text, range.lowerbound) 
+            //TODO: FIX
+            return range && range.isConstant ? ComputerAlgebraSystem.simplify(expression.text.replace(variable.text, range.lowerbound)) 
                 : null;
         } else {
             const expr = <string> expression;
             const vari = <string> variable;
-            return expr.replace(vari, expr);
+            const range = this.getRange(vari);
+            //TODO: FIX
+            return range && range.isConstant ? ComputerAlgebraSystem.simplify(expr.replace(vari, range.lowerbound)) 
+                : null;
         }
 
 
     }
 
     // updates the ranges by replacing the variable with its range 
-    public expandRangeExpressions(variable: Xml.XmlElement) : void {
+    public expandRangeExpressions(variable: Xml.Element) : void {
         if (!this.ranges.has(variable.text)) return;
 
         const clone = this.copy();
@@ -111,7 +130,7 @@ export class RangeDomain {
 
     public equals(other: RangeDomain) : boolean {
         for (const variable of this.ranges.keys()) {
-            if (!this.getRange(variable).equals(other.getRange(variable))) {
+            if (!this.getRange(variable)!.equals(other.getRange(variable) ?? null)) {
                 return false;
             }
         }
@@ -120,7 +139,7 @@ export class RangeDomain {
 
     public narrowRanges(other: RangeDomain) {
         for (const variable of other.ranges.keys()) {
-            const result = RangeDomain.narrowVarRanges(other.getRange(variable), this.getRange(variable), this);
+            const result = RangeDomain.narrowVarRanges(other.getRange(variable)!, this.getRange(variable)!, this);
             if (result.isOmega) {
                 this.removeRange(variable);
             } else {
@@ -130,11 +149,11 @@ export class RangeDomain {
 
     }
 
-    public widenAffectedRanges(other: RangeDomain, vars: Set<Xml.XmlElement> = new Set<Xml.XmlElement>()) {
+    public widenAffectedRanges(other: RangeDomain, vars: Set<Xml.Element> = new Set<Xml.Element>()) {
         const affected = new Set<string>();
         for (const var_range of other.ranges.keys()) {
             for (const varIn of vars) {
-                if (this.getRange(var_range).variable === varIn.text) {
+                if (this.getRange(var_range)!.variable === varIn.text) {
                     affected.add(var_range);
                 }
             }
@@ -145,7 +164,7 @@ export class RangeDomain {
         }
 
         for (const affect of affected) {
-            const result = RangeDomain.widenRange(other.getRange(affect), this.getRange(affect), this);
+            const result = RangeDomain.widenRange(other.getRange(affect)!, this.getRange(affect)!, this);
             if (result.isOmega) {
                 this.removeRange(affect)
             } else {
@@ -155,7 +174,7 @@ export class RangeDomain {
     }
 
     public unionRange(variable: string, varRange: Range) : void {
-        const result = RangeDomain.unionVarRanges(variable, this.getRange(variable), 
+        const result = RangeDomain.unionVarRanges(variable, this.getRange(variable)!, 
             varRange);
         if (result.isOmega) {
             this.removeRange(variable);
@@ -170,8 +189,8 @@ export class RangeDomain {
             vars.add(key);
         }
         for (const variable of vars) {
-            const result = RangeDomain.unionVarRanges(variable, this.getRange(variable), 
-                otherRange.getRange(variable));
+            const result = RangeDomain.unionVarRanges(variable, this.getRange(variable)!, 
+                otherRange.getRange(variable)!);
             if (result.isOmega) {
                 this.removeRange(variable)
             } else {
@@ -205,10 +224,11 @@ export class RangeDomain {
             return r1;
         }
 
+        // TODO: IMPLEMENT
         // const LB = Math.min(r1.lb, r2.lb);
         // const UB = Math.max(r1.ub, r2.ub);
-        throw new Error("NOT IMPLEMENTED")
-        // return new Range(variable, "", "");
+        // throw new Error("NOT IMPLEMENTED")
+        return r1;
     }
 
     // TODO REVIEW
@@ -233,12 +253,14 @@ export class RangeDomain {
     public toString() : string {
         let ret = "[";
         for (const variable of this.ranges.keys()) {
-            ret += this.getRange(variable).toString() + ", "
+            ret += this.getRange(variable)!.toString() + ", "
         }
         if (!this.isEmpty()) ret = ret.substring(0, ret.length - 2);
         ret += "]";
         return ret;
     }
+
+
 
 }
 
@@ -292,7 +314,8 @@ export class Range {
     //     return this.lowerbound > -Infinity || this.upperbound < Infinity;
     // }
 
-    public equals(other: Range) : boolean {
+    public equals(other: Range | null) : boolean {
+        if (other === null) return false;
         return this.lb === other.lb &&
             this.ub === other.ub;
     }

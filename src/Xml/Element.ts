@@ -1,17 +1,44 @@
 
 import * as Xml from './Xml.js'
 
-import * as xpath from 'xpath';
+import xpath from 'xpath';
 
+/**
+ * XML representation of the less than symbol (<)
+ */
+export const LT = '&lt;';
 
+/**
+ * XML representation of the greater than symbol (>)
+ */
+export const GT = '&gt;';
+
+/**
+ * XML representation of the less than or equal to symbol (<=)
+ */
+export const LE = '&lt;=';
+
+/**
+ * XML representation of the greater than or equal to symbol (>=)
+ */
+export const GE = '&gt;=';
 
 /**
  * Represents XML Element, like `<person/>`, not XML Comments or Attributes
+ * ! Aliased as Xml.Element
  */
-export class XmlElement {
+export default class XmlElement {
+// default export used to be able to reference class as Xml.Element without
+// name clashing with DOM Element
+// TODO: replace with named export
+
     /**
-     * Represents Node from the DOM API that contorls the behavior of an element
+     * Represents Node from the DOM API that contorls the behavior of an element.
+     * * Node cannot access the DOM API without a 3rd party library 
+     * * All the components of DOM API available are provided by the xmldom library 
+     * (intellisense may show more properties than are actually accessable)
      */
+    // TODO: add link
     private domNode: Element; 
     
 
@@ -22,8 +49,8 @@ export class XmlElement {
      */
     static LINE_NUMBER_OFFSET = 1;
 
-    public constructor(libxml: Element) {
-        this.domNode = libxml;
+    public constructor(domElement: Element) {
+        this.domNode = domElement;
     }
 
     /**
@@ -35,7 +62,9 @@ export class XmlElement {
     }
 
     public get line(): number {
-        throw new Error("NOT IMPLEMENTED YET");
+        // forsome reason lineNumber was not included in the Element type
+        // @ts-ignore
+        return this.domNode["lineNumber"];
     }
 
     /**
@@ -55,12 +84,12 @@ export class XmlElement {
     /**
      * Returns an array of all the child Elements
      */
-    public get elementChildren() : XmlElement[] {
+    public get childElements() : XmlElement[] {
         const children = this.domNode.childNodes;
         const ret: XmlElement[] = [];
         for (const childNode of Array.from(children)) {
             
-            if (!isDomElement(childNode)) {
+            if (!xpath.isElement(childNode)) {
                 continue;
             }
             ret.push(new XmlElement(childNode));
@@ -73,28 +102,28 @@ export class XmlElement {
      * parent Element
      */
     public get parentElement() : XmlElement | null {
-        return this.domNode.parentElement ? new XmlElement(this.domNode.parentElement) : null;
+        return xpath.isElement(this.domNode.parentNode) 
+            ? new XmlElement(this.domNode.parentNode) : null;
     }
 
     /**
      * Returns the previous sibling element or null
      */
     public get prevElement() : XmlElement | null {
-        return this.domNode.previousElementSibling 
-            ? new XmlElement(this.domNode.previousElementSibling) : null;
+        return xpath.isElement(this.domNode.previousSibling)
+            ? new XmlElement(this.domNode.previousSibling) : null;
     }
 
     /**
      * Returns the next sibling element or null
      */
     public get nextElement() : XmlElement | null {
-        return this.domNode.nextElementSibling 
-            ? new XmlElement(this.domNode.nextElementSibling) : null;
-
+        return xpath.isElement(this.domNode.nextSibling)
+            ? new XmlElement(this.domNode.nextSibling) : null;
     }
 
     public child(index: number) : XmlElement | null {
-        const children = this.elementChildren;
+        const children = this.childElements;
         return children.length > 0 && index < children.length ? children[index] : null;
     }
 
@@ -121,25 +150,24 @@ export class XmlElement {
         const namespaceSelect = xpath.useNamespaces(namespace)
         const queryResult = namespaceSelect(xpathString, this.domNode, false);
 
-        if (queryResult instanceof Node) {
-            if (isDomElement(queryResult)) {
-                if (queryResult.tagName === "for") {
-                    return [new Xml.ForLoop(queryResult)];
-                } else {
-                    return [new XmlElement(queryResult)];
-                }
-            }
-        } else if (Array.isArray(queryResult)) {
+
+        if (xpath.isArrayOfNodes(queryResult)) {
             const ret: XmlElement[] = [];
             for (const node of queryResult) {
-                if (isDomElement(node)
+                if (xpath.isElement(node)
                     && node.tagName === "for") {
-                    return [new Xml.ForLoop(node)];
-                } else if (isDomElement(node)) {
-                    return [new XmlElement(node)];
+                    ret.push(new Xml.ForLoop(node));
+                } else if (xpath.isElement(node)) {
+                    ret.push(new XmlElement(node));
                 }
             }
             return ret;
+        } else if (xpath.isElement(queryResult)) {
+            if (queryResult.tagName === "for") {
+                return [new Xml.ForLoop(queryResult)];
+            } else {
+                return [new XmlElement(queryResult)];
+            }
         }
 
         return [];
@@ -186,13 +214,13 @@ export class XmlElement {
      * the document, which should be the `<unit>` tag
      * @returns 
      */
-    public get enclosingFunction() : XmlElement | null {
+    public get enclosingFunction() : XmlElement {
         const func = this.find("./ancestor::xmlns:function");
         if (func.length > 0) {
-            return func[-1];
+            return func.at(-1)!;
         } else {
-            const root = this.domElement.getRootNode()
-            return isDomElement(root) ? new XmlElement(root) : null
+            const root = this.get("/xmlns:unit")!;
+            return root
         }
     }
 
@@ -208,12 +236,30 @@ export class XmlElement {
         return this.toString() === otherElement.toString();
     }
 
+    public copy() : XmlElement {
+        return new XmlElement(this.domNode.cloneNode(true) as Element);
+    }
+
+    public replace(newNode: XmlElement) : XmlElement {
+
+        // TODO: Inplace replacement or generate a copy
+
+        const domParent = this.parentElement?.domElement;
+
+        // TODO: CHANGE
+        if (!domParent) throw new Error("OH BROTHER THIS GUY STINKS");
+
+        domParent.replaceChild(newNode.domElement, this.domElement);
+
+        return newNode;
+        // // no return
+    }
 
     /**
-     * Returns all the symobs
+     * Returns all the symbolls 
      */
-    public get defSymbols() : Set<Xml.XmlElement> {
-        const ret = new Set<Xml.XmlElement>();
+    public get defSymbols() : Set<Xml.Element> {
+        const ret = new Set<Xml.Element>();
         for (const name of this.defList) {
             const innerName = name.get("./xmlns:name")
             ret.add(innerName ? innerName : name);
@@ -226,8 +272,8 @@ export class XmlElement {
      * element. They are returned as the outermost `<name>` tag, so arrays will 
      * have their index and objects will contain their . operators
      */
-    public get defList() : Xml.XmlElement[] {
-        const defList: Xml.XmlElement[] = [];
+    public get defList() : Xml.Element[] {
+        const defList: Xml.Element[] = [];
         const names = this.find(".//xmlns:name[count(ancestor::xmlns:name)=0]");
         for (const name of names) {
             const nextOp = name.nextElement;
@@ -249,13 +295,4 @@ export class XmlElement {
 
     }
 
-}
-
-/**
- * Returns true if the DOM Node passed in is an element
- * 
- * Needed due to fact that the DOM API does not acutally exist on Node
- */
-function isDomElement(node: Node): node is Element {
-    return node.nodeType === node.ELEMENT_NODE;
 }

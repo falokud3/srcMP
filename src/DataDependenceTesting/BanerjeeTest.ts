@@ -1,17 +1,17 @@
 import { DependenceVector } from './DependenceVector';
 import { SubscriptPair } from './SubscriptPair.js';
 import * as Xml from '../Xml/Xml.js';
+import * as ComputerAlgebraSystem from '../ComputerAlgebraSystem.js'
 
 
-
-class BanerjeeTest {
-    private subscript1: Xml.XmlElement;
-    private subscript2: Xml.XmlElement;
-    private loopnest: Xml.XmlElement[];
+export class BanerjeeTest {
+    private loopnest: Xml.ForLoop[];
+    private banerjeeBounds: Map<string, number[]>;
+    private const1 : string;
+    private const2 : string;
     private pair: SubscriptPair;
-    private bounds: Map<string, number[]>;
-    private const1;
-    private const2;
+
+    private isTestEligible: boolean = true
 
     static readonly  LB = 0;
     static readonly  UB = 4;
@@ -29,112 +29,167 @@ class BanerjeeTest {
 
     public constructor(pair: SubscriptPair) {
         this.pair = pair;
-        this.subscript1 = pair.getSubscript1();
-        this.subscript2 = pair.getSubscript2();
         this.loopnest = pair.getEnclosingLoops();
 
-        this.bounds = new Map<string, number[]>()
+        this.banerjeeBounds = new Map<string, number[]>()
 
         // get loop index variables
-        const idList = []
+        const idList: string[] = [];
         for (const loop of this.loopnest) {
-            const decl = loop.get("./xmlns:control/xmlns:init/xmlns:decl", Xml.ns);
-            // const coeff_node = <Xml.Element> decl.get("./xmlns:init/xmlns:expr/xmlns:literal", Xml.ns);
-            // const coeff = parseInt(coeff_node.text);
-            const index_node = decl!.get("./xmlns:name", Xml.ns);
-            idList.push(index_node!.text)
+            const index_node = Xml.getCanonicalIndexVariable(loop);
+            if (index_node) {
+                idList.push(index_node.text);
+            }
 
         }
 
         // get constant coefficients
-        this.const1 = this.getConstCoeff(this.subscript1);
-        this.const2 = this.getConstCoeff(this.subscript2);
+        // TODO: check if literal
+        this.const1 = this.getConstantCoefficient(pair.getSubscript1(), idList);
+        this.const2 = this.getConstantCoefficient(pair.getSubscript2(), idList);
 
         // compute bounds for the loop
-        // TODO: LOOPS
 
+        // TODO: ZIP() instead of i 
         for (let i = 0; i < this.loopnest.length; i++) {
 
-            // !: FIX
-            const A = 1;
-            const B = 1;
 
-            const up_node = this.loopnest[i].get("./xmlns:control/xmlns:condition/xmlns:expr/xmlns:literal", Xml.ns);
-            const U = parseInt(up_node!.text);
-            
-            const decl = this.loopnest[i].get("./xmlns:control/xmlns:init/xmlns:decl", Xml.ns);
-            const coeff_node = decl!.get("./xmlns:init/xmlns:expr/xmlns:literal", Xml.ns);
-            const L = parseInt(coeff_node!.text);
+            const id = idList[i];
+            const loop = this.loopnest[i];
+
+            if (!Xml.isLoopInvariant(loop, this.const1) 
+                || !Xml.isLoopInvariant(loop, this.const1)) {
+                this.isTestEligible = false;
+                break;
+            }
+
+            // TODO: Change Subscript pair to have the expression not the index
+            const coeff1 = this.getCoefficient(pair.getSubscript1().get('xmlns:expr')!.text, id);
+            const coeff2 = this.getCoefficient(pair.getSubscript2().get('xmlns:expr')!.text, id);
+
+            if (typeof coeff1 !== 'number' || typeof coeff2 !== 'number') {
+                this.isTestEligible = false;
+                break;
+            }
+
+            const A = coeff1;
+            const B = coeff2;
+
+            let U = loop.upperboundExpression
+            let L = loop.lowerboundExpression;
+            let N = Xml.getCanonicalIncrementValue(loop);
+
+            if (typeof U !== 'number' || typeof L !== 'number' || typeof N !== 'number') {
+                this.isTestEligible = false;
+                break;
+            }
 
 
-            // ! FIX
-            const N = 1;
 
             const bounds: number[] = []
 
-            Math.min(A, 0);
-
-
-            bounds.splice(BanerjeeTest.LB_any, 0,
-                (Math.min(A, 0) - Math.max(B, 0))*(U-L) +
-                (A-B)*L);
-            bounds.splice(BanerjeeTest.LB_less, 0,
-                    Math.min(Math.min(A, 0)-B)*(U-L-N) +
-                    (A-B)*L - B*N, 0);
-            bounds.splice(BanerjeeTest.LB_equal, 0, 
-                    Math.min(A-B, 0)*(U-L) + (A-B)*L);
-            bounds.splice(BanerjeeTest.LB_greater, 0,
-                    Math.min(A-Math.max(B))*(U-L-N) +
-                    (A-B)*L + A*N, 0);
-            bounds.splice(BanerjeeTest.UB_any, 0,
-                    (Math.max(A, 0) - Math.min(B, 0))*(U-L) +
+            if ( N >= 0) {
+                bounds.splice(BanerjeeTest.LB_any, 0,
+                    (getNegativePart(A) - getPositivePart(B))*(U-L) +
                     (A-B)*L);
-            bounds.splice(BanerjeeTest.UB_less, 0,
-                    Math.max(Math.max(A, 0)-B, 0)*(U-L-N) +
+                bounds.splice(BanerjeeTest.LB_less, 0,
+                    getNegativePart(getNegativePart(A)-B)*(U-L-N) +
                     (A-B)*L - B*N);
-            bounds.splice(BanerjeeTest.UB_equal, 0,
-                    Math.max(A-B, 0)*(U-L) + (A-B)*L);
-            bounds.splice(BanerjeeTest.UB_greater, 0,
-                    Math.max(A-Math.min(B, 0), 0)*(U-L-N) +
-                    (A-B)*L + A*N);
+                bounds.splice(BanerjeeTest.LB_equal, 0, 
+                        getNegativePart(A-B)*(U-L) + (A-B)*L);
+                bounds.splice(BanerjeeTest.LB_greater, 0,
+                        getNegativePart(A-getPositivePart(B))*(U-L-N) +
+                        (A-B)*L + A*N);
+                bounds.splice(BanerjeeTest.UB_any, 0,
+                        (getPositivePart(A) - getNegativePart(B))*(U-L) +
+                        (A-B)*L);
+                bounds.splice(BanerjeeTest.UB_less, 0,
+                        getPositivePart(getPositivePart(A)-B)*(U-L-N) +
+                        (A-B)*L - B*N);
+                bounds.splice(BanerjeeTest.UB_equal, 0,
+                        getPositivePart(A-B)*(U-L) + (A-B)*L);
+                bounds.splice(BanerjeeTest.UB_greater, 0,
+                        getPositivePart(A-getNegativePart(B))*(U-L-N) +
+                        (A-B)*L + A*N);
+            } else {
+                [U, L] = [L, U];
+                N *= -1;
 
-            this.bounds.set(this.loopnest[i].text, bounds);
+                bounds.splice(BanerjeeTest.LB_any, 0,
+                    (getNegativePart(A) - getPositivePart(B))*(U-L) +
+                    (A-B)*L);
+                bounds.splice(BanerjeeTest.LB_less, 0,
+                        getNegativePart(A - getNegativePart(B))*(U-L-N) +
+                        (A-B)*L + A*N);
+                bounds.splice(BanerjeeTest.LB_equal, 0, 
+                        getNegativePart(A-B)*(U-L) + (A-B)*L);
+                bounds.splice(BanerjeeTest.LB_greater, 0,
+                        getNegativePart(getNegativePart(A)-B)*(U-L-N) +
+                        (A-B)*L - B*N);
+                bounds.splice(BanerjeeTest.UB_any, 0,
+                        (getPositivePart(A)-getNegativePart(B))*(U-L) +
+                        (A-B)*L);
+                bounds.splice(BanerjeeTest.UB_less, 0,
+                        getPositivePart(A-getNegativePart(B))*(U-L-N) +
+                        (A-B)*L + A*N);
+                bounds.splice(BanerjeeTest.UB_equal, 0,
+                        getPositivePart(A-B)*(U-L) + (A-B)*L);
+                bounds.splice(BanerjeeTest.UB_greater, 0,
+                        getPositivePart(getPositivePart(A)-B)*(U-L-N) +
+                        (A-B)*L - B*N);
+
+            }
+            this.banerjeeBounds.set(this.loopnest[i].toString(), bounds);
         }
 
     }
 
-    public getConstCoeff(subscript: Xml.XmlElement) : number {
-        const lit = subscript.get("./xmlns:expr/xmlns:literal", Xml.ns);
-        if (lit) {
-            const number = parseInt(lit.text)
-            return number
-        }
-        return 0;
-    }
-
-    public get subscriptPair() {
+    public get subscriptPair() : SubscriptPair {
         return this.pair;
     }
 
+    public getConstantCoefficient(subscript: Xml.Element, idList: string[]) : string {
+        const expression = subscript.get('xmlns:expr')!.text;
+        // TODO: use Range Analysis here
+        let ret: string = expression;
+        // TODO: use Algebrite filter instead
+        for (const id of idList) {
+            // maybe use filter instead
+            ret = ComputerAlgebraSystem.simplify(`coeff(${ret}, ${id}, 0)`);
+        }
+        return ret;
+    }
+
+    public getCoefficient(expression: string, id: string) : string | number {
+        const ret = ComputerAlgebraSystem.simplify(`coeff(${expression}, ${id}, 1)`);
+        const num = Number(ret);
+        return !Number.isNaN(num) ? num : ret;
+    }
+
     public pairIsElligible() : boolean {
-        return true;
+        return this.isTestEligible;
     }
 
     public testDependence(dv: DependenceVector) : boolean {
-        let LB = 0;
-        let UB = 0;
-        const diff = this.const2 - this.const1;
+        let banerjeeLB = 0;
+        let banerjeeUB = 0;
+        const exprDiff = ComputerAlgebraSystem.simplify(`${this.const2} - (${this.const1})`);
+        const diff = Number(exprDiff);
+
+        if (Number.isNaN(diff)) {
+            return true;
+        }
 
         for (const loop of this.loopnest) {
-            const dir = dv.getDirection(loop, true);
-            const loopBounds = this.bounds.get(loop.text);
+            const dir = dv.getDirection(loop, true)!;
+            const loopBounds = this.banerjeeBounds.get(loop.toString());
 
-            LB += loopBounds![BanerjeeTest.LB];
-            UB += loopBounds![BanerjeeTest.UB];
+            banerjeeLB += loopBounds![dir + BanerjeeTest.LB];
+            banerjeeUB += loopBounds![dir + BanerjeeTest.UB];
         }
 
         // console.log(this.pair.toString())
-        if (diff < LB || diff > UB) {
+        if (diff < banerjeeLB || diff > banerjeeUB) {
             // console.log("No Dependence found")
             return false;
         } else {
@@ -145,4 +200,10 @@ class BanerjeeTest {
 
 }
 
-export {BanerjeeTest}
+function getNegativePart(num: number) : number {
+    return Math.min(num, 0);
+}
+
+function getPositivePart(num: number) : number {
+    return Math.max(num, 0);
+}

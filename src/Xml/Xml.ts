@@ -9,10 +9,12 @@
 
 import { readFileSync } from 'fs';
 
-import { XmlElement } from './Element.js';
+import XmlElement from './Element.js';
 import { assert } from 'console';
 import { DOMParser } from '@xmldom/xmldom';
+import { execSync } from 'child_process';
 
+export {XmlElement as Element}
 export * from './Element.js'
 export * from './ForLoop.js'
 export * from './Expression.js'
@@ -31,6 +33,12 @@ export function parseXmlString(xmlString: string) : XmlElement {
         return new XmlElement(root);
     }
     throw new Error("Could not parse Xml String");
+}
+
+export function generateXml(string: string, language: string) : XmlElement {
+    const buffer = execSync(`srcml --text "${string}" --language ${language}`, {timeout: 10000});
+    const rhsRoot = parseXmlString(buffer.toString());
+    return rhsRoot;
 }
 
 /**

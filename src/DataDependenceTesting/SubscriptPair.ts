@@ -4,15 +4,15 @@ import { ArrayAccess } from './ArrayAccess.js';
 import { ControlFlowGraph } from './ControlFlowGraph.js';
 
 class SubscriptPair {
-    private subscript1: Xml.XmlElement;
-    private subscript2: Xml.XmlElement;
+    private subscript1: Xml.Element;
+    private subscript2: Xml.Element;
 
     private access1: ArrayAccess;
     private access2: ArrayAccess;
 
     private enclosingLoops: Xml.ForLoop[];
 
-    constructor(subscript1: Xml.XmlElement, subscript2: Xml.XmlElement,
+    constructor(subscript1: Xml.Element, subscript2: Xml.Element,
         access1: ArrayAccess, access2: ArrayAccess, loops: Xml.ForLoop[]) {
         this.subscript1 = subscript1;
         this.subscript2 = subscript2;
@@ -25,9 +25,9 @@ class SubscriptPair {
         const stmt1 = this.access1.parentStatement;
         const stmt2 = this.access2.parentStatement;
 
-        if (stmt1 == stmt2) {
-            return this.access1.getAccessType() == ArrayAccess.read_access &&
-                this.access2.getAccessType() == ArrayAccess.write_access;
+        if (stmt1.equals(stmt2)) {
+            return this.access1.getAccessType() == ArrayAccess.READ_ACCESS &&
+                this.access2.getAccessType() == ArrayAccess.WRITE_ACCESS;
         } else {
             //TODO: use caching system
             const cfg = ControlFlowGraph.buildControlFlowGraph(this.enclosingLoops[this.enclosingLoops.length - 1]);
@@ -46,11 +46,11 @@ class SubscriptPair {
         return ret;
     }
 
-    public getEnclosingLoops() : Xml.XmlElement[] {
+    public getEnclosingLoops() : Xml.ForLoop[] {
         return this.enclosingLoops;
     }
 
-    public getSubscript1() : Xml.XmlElement {
+    public getSubscript1() : Xml.Element {
         return this.subscript1;
     }
 
@@ -63,7 +63,7 @@ class SubscriptPair {
 
     }
 
-    public getSubscript2() : Xml.XmlElement {
+    public getSubscript2() : Xml.Element {
         return this.subscript2;
     }
 

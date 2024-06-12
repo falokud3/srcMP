@@ -2,8 +2,11 @@
 import { assert } from "console";
 
 import { ArrayAccess } from '../DataDependenceTesting/ArrayAccess.js';
-import { XmlElement } from "./Element.js";
+import XmlElement from "./Element.js";
 import * as Xml from './Xml.js'
+import * as RangeAnalysis from '../DataDependenceTesting/RangeAnalysis.js'
+import * as CAS from '../ComputerAlgebraSystem.js'
+import exp from "constants";
 
 
 export class ForLoop extends XmlElement {
@@ -68,62 +71,40 @@ export class ForLoop extends XmlElement {
      * key is the array name and the value is a list of each array acess
      * ! Assumes <index> is associated with an array not an object
      */
-    public getArrayAccesses() : Map<string, ArrayAccess[]> {   
-        //const test: Xml.Element[] = loopNode.find(".//xmlns:name/xmlns:index[1]/..", Xml.ns);
-        const array_access_map = new Map<string, ArrayAccess[]>();
-        const indexNodes: XmlElement[] = this.find(".//xmlns:index", Xml.ns);
-        indexNodes.forEach( (indexNode: XmlElement) => {
-            // ! BAD: LAZY BAD BAD BAD
-            // TODO: FIX THIS (I JUST COULDN'T BE BOTHERED AT THE TIME)
-            const access_expr = indexNode.parentElement ?? indexNode;
-            const parent_stmt = access_expr.parentElement ?? indexNode;
-            const enclosing_loops = parent_stmt.find("ancestor::xmlns:for", Xml.ns);
-            const enclosing_loop = <Xml.ForLoop> enclosing_loops[enclosing_loops.length - 1];
+    public getArrayAccesses() : Map<string, ArrayAccess[]> {
+        const accessMap = new Map<string, ArrayAccess[]>();
+        const accesses = this.find('.//xmlns:name[xmlns:index]');
+        accesses.forEach((access: Xml.Element) => {
+            const parentStmt = access.parentElement
 
-            // ? use filter() before forEach instead of continue
-            // declarations are not array acceses
-            if (parent_stmt.name === "decl")  return;
+            if (!parentStmt) return;
+            if (parentStmt.name === "decl") return;
 
-            // edge case: multi-dimenstional arrays
-            // need to avoid double counting
-            if (access_expr.get("xmlns:index", Xml.ns) != indexNode) return;
+            const accessOnLHS = parentStmt.child(0)?.equals(access);
+            const newAccesses: ArrayAccess[] = [];
 
-            let access_type: string;
-            // parent_stmt.child(0) is the LHS of an assigment expression
-            if (Xml.hasAssignmentOperator(parent_stmt) 
-                && parent_stmt.child(0) === access_expr) {
-                access_type = ArrayAccess.write_access;
-
+            if (accessOnLHS && Xml.hasAssignmentOperator(parentStmt)) {
+                newAccesses.push(new ArrayAccess(access, ArrayAccess.WRITE_ACCESS));
+            } else if (accessOnLHS && Xml.hasAugAssignmentOperator(parentStmt)) {
+                newAccesses.push(new ArrayAccess(access, ArrayAccess.WRITE_ACCESS));
+                newAccesses.push(new ArrayAccess(access, ArrayAccess.READ_ACCESS));
             } else {
-                access_type = ArrayAccess.read_access;
+                newAccesses.push(new ArrayAccess(access, ArrayAccess.READ_ACCESS));
             }
 
-            const array_access = new ArrayAccess(access_type, access_expr,
-                enclosing_loop, parent_stmt);
-
-            const array_name = (access_expr.child(0) as XmlElement).text;
-            let array_accesses = array_access_map.get(array_name);
-            if (array_accesses === undefined) {
-                array_accesses = [];
-                array_access_map.set(array_name, array_accesses);
-            } 
-
-            array_accesses.push(array_access);
-
-            // NOTE: there may be a better way to structure this
-                // maybe change hasAssignmentOperator to getOP
-            if (Xml.hasAugAssignmentOperator(parent_stmt) 
-                && parent_stmt.child(0) === access_expr) {
-                const aug_access = new ArrayAccess(ArrayAccess.read_access,
-                    access_expr, enclosing_loop, parent_stmt);
-                array_accesses.push(aug_access);
-                // REMOVE
-                console.log(aug_access.toString());
+            const hasUnaryAssignment = ['++', '--'].includes(access.prevElement?.text ?? "") 
+                || ['++', '--'].includes(access.nextElement?.text ?? "") ;
+            if (hasUnaryAssignment && newAccesses.length < 2) {
+                newAccesses.push(new ArrayAccess(access, 
+                    newAccesses[0].getAccessType() === ArrayAccess.READ_ACCESS ? 
+                    ArrayAccess.WRITE_ACCESS : ArrayAccess.READ_ACCESS ));
             }
 
+            const arrayAccesses = accessMap.get(newAccesses[0].arrayName) ?? [];
+            if (arrayAccesses.length === 0) accessMap.set(newAccesses[0].arrayName, arrayAccesses);
+            arrayAccesses.push(...newAccesses);
         });
-
-        return array_access_map;
+        return accessMap;
     }
 
     // returns the intersection of two loop nests
@@ -134,4 +115,152 @@ export class ForLoop extends XmlElement {
             });
         });
     }
+
+    public get upperboundExpression() : string | number {
+        const xmlCondOp = this.get('xmlns:control/xmlns:condition/xmlns:expr/xmlns:operator')
+        if (!xmlCondOp) throw new Error("UpperBoundExpression Missing Condition"); //TODO: change this
+        const condOp = xmlCondOp.text;
+        const step = getCanonicalIncrementValue(this);
+        const rhs = Xml.getRHSFromOp(xmlCondOp).text;
+        let ub : string | undefined;
+        if (condOp === '<=' || condOp === '>=') {
+            ub = CAS.simplify(rhs);
+        } else if (condOp === '<') {
+            ub = CAS.simplify(`${rhs} - (${step})`);
+        } else if (condOp === '>') {
+            ub = CAS.simplify(`${rhs} + (${step})`);
+        }
+
+        if (ub === undefined) {
+            throw new Error("Unexpected Op");
+        }
+        
+        const num = Number(ub);
+
+        if (!Number.isNaN(num)) {
+            return num;
+        }
+
+        // TODO: RANGE ANALYSIS
+        // RangeAnalysis.query(xmlCondOp)?.substituteForward(ub);
+        return ub;
+
+    }
+
+    public get lowerboundExpression() : string | number {
+        const init = this.initialization;
+        let expr: Xml.Element | null = null;
+        if (init.contains('xmlns:decl')) {
+            expr = init.get('xmlns:decl/xmlns:init/xmlns:expr');
+        } else if (init.contains('xmlns:expr')) {
+            expr = init.get('xmlns:decl/xmlns:init/xmlns:expr');
+        }
+
+        if (!expr) throw new Error("Missing Lowerbound Expresion");
+
+        const exprString = CAS.simplify(expr.text);
+        const exprNum = Number(exprString);
+        // TODO: Range Analysis
+        return !Number.isNaN(exprNum) ? exprNum : exprString;
+    }
+
 }
+
+/**
+ * Returns true if the loop increment can be resolved to an integer value
+ * ! Assumes that the loop is in canonical form
+ * @param loop Loop in canonical form
+ */
+export function getCanonicalIncrementValue(loop: Xml.ForLoop): number | string {
+   const incrExpr = loop.increment.child(0)!;
+   let incrStep: Xml.Element = loop;
+   let isNegativeStep: boolean = false;
+
+   // TODO: Add Assert
+   if (incrExpr.contains("./xmlns:operator[text()='++']")) {
+      return 1;
+   } else if (incrExpr.contains("./xmlns:operator[text()='--']")) {
+      return -1;
+   } else if (incrExpr.contains("./xmlns:operator[text()='+=']")) {
+      incrStep = incrExpr.child(2)!;
+   } else if (incrExpr.contains("./xmlns:operator[text()='-=']")) {
+      isNegativeStep = true;
+      incrStep = incrExpr.child(2)!;
+   } else if (incrExpr.contains("./xmlns:operator[text()='=']")) {
+      const indexVariable = getCanonicalIndexVariable(loop);
+      // i = i - step    i = i + step    i = step + i
+      if (incrExpr.child(3)?.text === "-") {
+         isNegativeStep = true;
+         incrStep = incrExpr.child(4)!;
+      } else {
+         if (incrExpr.child(2)?.equals(indexVariable!)) {
+            incrStep = incrExpr.child(4)!;
+         } else {
+            incrStep = incrExpr.child(2)!;
+         }
+      }
+   }
+
+   if (incrStep.name === "literal") {
+
+      const stepValue = Number(incrStep.text);
+
+      if (Number.isInteger(stepValue)) {
+        return isNegativeStep ? -1 * stepValue : stepValue;
+      } else {
+        return incrStep.text;
+      }
+
+   } else if (incrStep.name === "name") {
+      const rd = RangeAnalysis.query(incrExpr);
+      if (rd) {
+         const loopInc = rd.substituteForward(incrStep);
+         return loopInc;
+      }
+   }
+   return incrStep.text;
+}/**
+ * Returns the loop index variable if the initilization expression has one of
+ * the following forms (null otherwise):
+ * * indexVar = lb
+ * * integer-type indexVar = lb
+ */
+export function getCanonicalIndexVariable(loop: Xml.ForLoop): Xml.Element | null {
+// TODO: check if variable is type int and allow for declarations outside init
+   const init = loop.initialization;
+   // handles having no init and multiple init scenarios
+   if (init.childElements.length != 1) return null;
+
+   const initStatement = init.child(0)!;
+   const variableLocation = initStatement.name === "decl" ? 1 : 0;
+   const variable = initStatement.child(variableLocation)!;
+
+   if (Xml.isComplexName(variable)) return null;
+
+   // Disasllows Augmented Assignment & cases like i = j = 0
+   if (initStatement.name === "expr" && (initStatement.child(1)?.text !== "="
+      || initStatement.find("./xmlns:operator[contains(text(),'=')]").length !== 1)) return null;
+
+   return variable;
+}
+
+export function isLoopInvariant(loop: Xml.ForLoop, expr: string) {
+    const incrSymbols = (loop.get('xmlns:control/xmlns:incr')?.defSymbols ?? new Set<Xml.Element>());
+    const bodySymbols = loop.get('xmlns:body')?.defSymbols ?? new Set<Xml.Element>();
+
+    const loopSymbols = new Set<string>();
+    const addSymbols = (node: Xml.Element) => loopSymbols.add(node.text);
+
+    incrSymbols.forEach(addSymbols);
+    bodySymbols.forEach(addSymbols);
+
+    const exprSymbols = CAS.getVariables(expr);
+
+    for (const symbol of exprSymbols) {
+        if (loopSymbols.has(symbol)) {
+            return false;
+        }
+    }
+    return true;
+}
+

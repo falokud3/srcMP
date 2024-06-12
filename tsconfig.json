@@ -5,6 +5,8 @@
     "declaration": true,
     "forceConsistentCasingInFileNames": true,
 
+    "isolatedModules": true,
+
     "lib" : ["ES6", "DOM", "DOM.Iterable"],
     "module": "ES2015", // picked to match Bundler
     "moduleResolution": "Bundler", // loose rules to acoomodate packages
