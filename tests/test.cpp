@@ -7,12 +7,30 @@
 #include <stdio.h>
 #include <math.h>
 
-int main(int argc) {
+int main(){
 
   float a[1000], b[1000];
-  
-  for (int i = 0; i<1000 ; i++) {
-    a[i] = a[i + 1];
+  int i; int j;
+  int step = 5;
+
+  step, i += 3;
+
+  switch (step)
+  {
+  case 5:
+  case 4:
+    step = 3;
+    break;
+  case 6:
+    step = 5;
+    break;
+  default:
   }
+  
+  for (i = 1; i<1000 ; i += step) {
+    a[i]= b[i];
+  }
+  
    return 0;
 }
+

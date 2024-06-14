@@ -62,9 +62,15 @@ export default class XmlElement {
     }
 
     public get line(): number {
-        // forsome reason lineNumber was not included in the Element type
+        // lineNumber was not included in the Element type, which is why this workaround is needed
         // @ts-ignore
         return this.domNode["lineNumber"];
+    }
+
+    public get col(): number {
+        // columnNumber was not included in the Element type, which is why this workaround is needed
+        // @ts-ignore
+        return this.domNode['columnNumber'];
     }
 
     /**
@@ -110,16 +116,26 @@ export default class XmlElement {
      * Returns the previous sibling element or null
      */
     public get prevElement() : XmlElement | null {
-        return xpath.isElement(this.domNode.previousSibling)
-            ? new XmlElement(this.domNode.previousSibling) : null;
+        let curr: Node | null = this.domNode;
+        while (curr = curr.previousSibling) {
+            if (xpath.isElement(curr)) {
+                return new XmlElement(curr);
+            }
+        }
+        return null;
     }
 
     /**
      * Returns the next sibling element or null
      */
     public get nextElement() : XmlElement | null {
-        return xpath.isElement(this.domNode.nextSibling)
-            ? new XmlElement(this.domNode.nextSibling) : null;
+        let curr: Node | null = this.domNode;
+        while (curr = curr.nextSibling) {
+            if (xpath.isElement(curr)) {
+                return new XmlElement(curr);
+            }
+        }
+        return null;
     }
 
     public child(index: number) : XmlElement | null {

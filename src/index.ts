@@ -4,12 +4,15 @@ import * as DDT from './DataDependenceTesting/DataDependenceTestingPass.js'
 
 import { Command } from 'commander'
 import { execSync } from 'child_process';
+import { buildGraph } from './DataDependenceTesting/ControlFlowGraphBuilder.js';
 
 
 
 function runCompiler(xmlRoot: Xml.Element) {
     // TODO: PARSE unit tag for namespaces
-    DDT.run(xmlRoot);
+
+    console.log(buildGraph(xmlRoot.get('//xmlns:function')!).toString())
+    // DDT.run(xmlRoot);
 }
 
 /**
@@ -19,6 +22,7 @@ function runCompiler(xmlRoot: Xml.Element) {
  * @returns an xml object representing the file contents
  */
 function getFileXml(srcPath: string) : Xml.Element {
+    //TODO: Create SRCML interface for whole project to use
     const fileExtension = srcPath.substring(srcPath.lastIndexOf("."))
     
     if (fileExtension !== ".xml") {

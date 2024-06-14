@@ -207,14 +207,14 @@ function buildSwitch(switchStmt: Xml.Element) : ControlFlowNode {
         });
 
     let prevCase: ControlFlowNode | null = null;
-    for (const caseXml of casesXml) {
+    for (const [index, caseXml] of casesXml.entries()) {
         let caseNode: ControlFlowNode = buildCase(caseXml);
-        let hasBreak: boolean = caseNode.getTail()[0].xml.name == "break";
 
         if (prevCase) ControlFlowNode.connectNodes(prevCase, caseNode);
         cond.addAdjacent(caseNode);
 
-        if (!hasBreak) cond.popTailNode();
+        const hasBreak: boolean = caseNode.getTail()[0].xml.name === "break";
+        if (!hasBreak && index !== casesXml.length - 1) cond.popTailNode(); // TODO: Review this
 
         prevCase = hasBreak ? null : caseNode;  
     }
