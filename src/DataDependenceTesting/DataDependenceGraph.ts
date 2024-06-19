@@ -1,6 +1,6 @@
 import { ArrayAccess, ArrayAccessType } from "./ArrayAccess.js";
 import { DependenceVector } from "./DependenceVector.js";
-
+import * as Xml from '../Xml/Xml.js'
 
 export class DataDependenceGraph {
 
@@ -8,6 +8,10 @@ export class DataDependenceGraph {
 
     public constructor() {
         this.dependenceArcs = [];
+    }
+
+    public get arcs() : Arc[] {
+        return this.dependenceArcs;
     }
 
     public addAllArcs(other: DataDependenceGraph) : void {
@@ -26,13 +30,26 @@ export class DataDependenceGraph {
         if (!ddgHasArc) this.dependenceArcs.push(arc)
     }
 
+    public removeArc(other: Arc) : void {
+        const index = this.dependenceArcs.findIndex((arc) => arc.equals(other));
+        if (index !== -1) this.dependenceArcs.splice(index, 1);
+    }
+
+    public getLoopSubGraph(loop: Xml.ForLoop) : DataDependenceGraph {
+        const loopGraph = new DataDependenceGraph();
+        for (const arc of this.dependenceArcs) {
+            if (arc.belongsToLoop(loop)) loopGraph.addArc(arc);
+        }
+        return loopGraph;
+    }
+
 }
 
 type Dependence = "Flow" | "Anti" | "Ouptut" | "Input";
 
 export class Arc {
-    private source: ArrayAccess;
-    private sink: ArrayAccess;
+    readonly source: ArrayAccess;
+    readonly sink: ArrayAccess;
     private dependenceType: Dependence;
     public dependenceVector: DependenceVector;
 
@@ -57,6 +74,16 @@ export class Arc {
             && this.dependenceVector.equals(other.dependenceVector);
     }
 
+    public belongsToLoop(loop: Xml.ForLoop) : boolean {
+
+        const sourceBelongs = this.source.enclosingLoop
+            ?.getEnclosingLoopNest().some((sloop) => loop.equals(sloop));
+
+        const sinkBelongs = this.sink.enclosingLoop
+            ?.getEnclosingLoopNest().some((sloop) => loop.equals(sloop));
+
+        return (sourceBelongs && sinkBelongs) ?? false;
+    }
 
 }
 

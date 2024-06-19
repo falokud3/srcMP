@@ -138,7 +138,7 @@ export function mergeVectorSets(dvs: DependenceVector[], other: DependenceVector
 }
 
 // TODO: Refactor
-enum Direction {
+export enum Direction {
     nil = -1,
     any = 0, 
     less, 

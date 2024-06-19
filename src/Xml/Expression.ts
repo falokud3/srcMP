@@ -23,12 +23,12 @@ export function hasAssignmentOperator(xml: XmlElement) : boolean {
     return isAssignmentOperator(op);
 }
 
-function isAugAssignmentOperator(op: XmlElement) : boolean {
+export function isAugAssignmentOperator(op: XmlElement) : boolean {
     return [...op.text].filter((char) => char === "=").length === 1 && 
         op.text.length > 1 && !['<=', '>=', '!=', ].includes(op.text);
 }
 
-function isAssignmentOperator(op: XmlElement) : boolean {
+export function isAssignmentOperator(op: XmlElement) : boolean {
     return op.text.length === 1 && op.text === "=";
 }
 

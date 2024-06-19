@@ -271,6 +271,21 @@ export default class XmlElement {
         // // no return
     }
 
+    public get useSymbols() : Set<Xml.Element> {
+        const useList: Xml.Element[] = [];
+        const names = this.find(".//xmlns:name[count(ancestor::xmlns:name)=0]");
+        for (const name of names) {
+            if (!variableIsDefined(name)) useList.push(name);   
+        }
+
+        const ret = new Set<Xml.Element>();
+        for (const name of useList) {
+            const innerName = name.get("./xmlns:name");
+            ret.add(innerName ? innerName : name);
+        }
+        return ret; 
+    }
+
     /**
      * Returns all the symbolls 
      */
@@ -292,23 +307,27 @@ export default class XmlElement {
         const defList: Xml.Element[] = [];
         const names = this.find(".//xmlns:name[count(ancestor::xmlns:name)=0]");
         for (const name of names) {
-            const nextOp = name.nextElement;
-            const prevOp = name.prevElement;
-
-            if (prevOp?.name === "operator" 
-            && (prevOp?.text === "--" || prevOp?.text === "++")) {
-                defList.push(name);
-            }
-
-            if (nextOp?.name === "operator" 
-            && ([...nextOp?.text].filter((char) => char === '=' ).length === 1
-                || nextOp?.text === "--" || nextOp?.text === "++")) {
-                defList.push(name);
-            }
-            
+            if (variableIsDefined(name)) defList.push(name);   
         }
         return defList;
 
     }
 
+}
+
+function variableIsDefined(name: Xml.Element) : boolean {
+    const nextOp = name.nextElement;
+    const prevOp = name.prevElement;
+    if (prevOp?.name === "operator" 
+        && (prevOp?.text === "--" || prevOp?.text === "++")) {
+        return true;
+    }
+
+    if (nextOp?.name === "operator" 
+        && (Xml.isAssignmentOperator(nextOp) || Xml.isAugAssignmentOperator(nextOp)
+            || nextOp?.text === "--" || nextOp?.text === "++")) {
+        return true;
+    }
+
+    return false;
 }

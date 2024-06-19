@@ -10,20 +10,33 @@ import { BanerjeeTest } from './BanerjeeTest.js';
 import { Arc, DataDependenceGraph as DDGraph } from './DataDependenceGraph.js';
 import * as AliasAnalysis from './AliasAnalysis.js'
 import * as RangeAnalysis from './RangeAnalysis.js'
-import { getTestableLoops } from './Eligibility.js';
+import { extractOutermostDependenceTestEligibleLoops } from './Eligibility.js';
 
 import * as ComputerAlgebraSystem from '../ComputerAlgebraSystem.js'
+import { Verbosity } from '../CommandLineOutput.js';
+import * as CLO from '../CommandLineOutput.js'
 
 
-export function run(root: Xml.Element) : DDGraph {
+export function run(program: Xml.Element) : DDGraph {
+
+   CLO.output({format: (verbosity: Verbosity) => {
+      if (verbosity !== Verbosity.Internal) return '';
+      return '[Data Dependence Pass] Start'
+   }});
 
    const ddg = new DDGraph();
 
    // AliasAnalysis.run();
 
-   const loops = getTestableLoops(root).forEach((loop) => {
-      ddg.addAllArcs(analyzeLoopForDependence(loop));
-   });
+   const loops = extractOutermostDependenceTestEligibleLoops(program)
+   // .forEach((loop) => {
+   //    ddg.addAllArcs(analyzeLoopForDependence(loop));
+   // });
+
+   CLO.output({format: (verbosity: Verbosity) => {
+      if (verbosity !== Verbosity.Internal) return '';
+      return '[Data Dependence Pass] End -- Duration: N/A' // TODO: Duration
+   }});
 
    return ddg;
 }

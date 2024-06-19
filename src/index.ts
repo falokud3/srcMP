@@ -4,15 +4,16 @@ import * as DDT from './DataDependenceTesting/DataDependenceTestingPass.js'
 
 import { Command } from 'commander'
 import { execSync } from 'child_process';
-import { buildGraph } from './DataDependenceTesting/ControlFlowGraphBuilder.js';
+import * as PLD from './ParallelizableLoopDetection/ParallelizableLoopDetectionPass.js';
+import { Verbosity, setVerbosity } from './CommandLineOutput.js';
 
 
 
-function runCompiler(xmlRoot: Xml.Element) {
+function runCompiler(program: Xml.Element) {
     // TODO: PARSE unit tag for namespaces
-
-    console.log(buildGraph(xmlRoot.get('//xmlns:function')!).toString())
-    // DDT.run(xmlRoot);
+    setVerbosity(Verbosity.Internal);
+    const programDDG = DDT.run(program);
+    // PLD.run(program, programDDG);
 }
 
 /**

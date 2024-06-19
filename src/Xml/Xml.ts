@@ -51,3 +51,8 @@ export function isComplexName(nameNode: XmlElement) : boolean {
     return nameNode.contains("./xmlns:operator") 
         || nameNode.contains("./xmlns:index");
 }
+
+export function isAncestorOf(ancestor: XmlElement, descendant: XmlElement) : boolean {
+    return ancestor.find(`./descendant::xmlns:${descendant.name}`)
+        .some((desc) => desc.equals(descendant));
+}

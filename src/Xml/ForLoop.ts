@@ -37,6 +37,12 @@ export class ForLoop extends XmlElement {
         return ForLoop.getCommonLoops(loopNest, other_loopNest);
     }
 
+    public get header() : XmlElement {
+        const header = this.get("./xmlns:control");
+        if (!header) throw new Error("SrcML is not properly formatted");
+        return header;
+    }
+
     public get initialization() : XmlElement {
         const init = this.get("./xmlns:control/xmlns:init");
         if (!init) throw new Error("SrcML is not properly formatted");
