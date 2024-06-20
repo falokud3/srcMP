@@ -27,8 +27,10 @@ int main(int argc){
   default:
   }
 
-  for (j = 1; i<1000 ; i += step) {
-    a[i]= b[i];
+  for (i = 0; i < 2 ; i++) {
+    for (int k = 1; 1 < 3; k++) {
+
+    }
   }
   
    return 0;

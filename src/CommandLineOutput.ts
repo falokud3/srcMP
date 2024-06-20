@@ -1,4 +1,5 @@
 import chalk from 'chalk';
+import wrapAnsi from 'wrap-ansi';
 
 const log = console.log;
 
@@ -15,7 +16,7 @@ export interface CLIMessage  {
  * Uses the chalk library to output compiler messages 
  */
 export function output(message: CLIMessage) {
-    const cliOutput = message.format(verbositySetting);
+    const cliOutput = wrapAnsi(message.format(verbositySetting), 80, {hard: true});
     if (cliOutput.length === 0) return;
     console.log(`${cliOutput}`);
 }

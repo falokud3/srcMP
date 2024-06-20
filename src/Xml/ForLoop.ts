@@ -178,9 +178,10 @@ export class ForLoop extends XmlElement {
  * @param loop Loop in canonical form
  */
 export function getCanonicalIncrementValue(loop: Xml.ForLoop): number | string {
-   const incrExpr = loop.increment.child(0)!;
+   const incrExpr = loop.increment.child(0);
    let incrStep: Xml.Element = loop;
    let isNegativeStep: boolean = false;
+   if (!incrExpr) return 'N/A' // TODO : should probably be undefined
 
    // TODO: Add Assert
    if (incrExpr.contains("./xmlns:operator[text()='++']")) {

@@ -64,7 +64,7 @@ export default class XmlElement {
     public get line(): number {
         // lineNumber was not included in the Element type, which is why this workaround is needed
         // @ts-ignore
-        return this.domNode["lineNumber"];
+        return this.domNode["lineNumber"] - 1; // -1, because srcml adds the unit tag
     }
 
     public get col(): number {

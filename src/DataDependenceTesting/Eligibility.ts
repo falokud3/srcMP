@@ -22,6 +22,7 @@ export function extractOutermostDependenceTestEligibleLoops(root: Xml.Element): 
          const nestedLoopIsEligible = isLoopTestEligible(nestedLoop)[0];
          if (!nestedLoopIsEligible) {
             loopMessage.nestedInelligibleLoop = nestedLoop;
+            loopIsEligibile = false;
             break;
          }
       }
@@ -184,7 +185,8 @@ export class EligiblityMessage implements CLIMessage {
       return this.hasCanonicalBody 
          && this.hasCanonicalCondition 
          && typeof this.incrementValue === 'number'
-         && !this.containsMethodCall;
+         && !this.containsMethodCall
+         && !this.nestedInelligibleLoop;
    }
 
    public get indexVariableRedefinitions() : Xml.Element[] {
@@ -216,7 +218,7 @@ export class EligiblityMessage implements CLIMessage {
    public get simpleFormat() : string {
       const numFormat = (amount: number, word: string) => amount === 1 ? `1 ${word}` 
          : `${amount} ${word}s`;
-      let output = `Line ${this.loop.line}:Col ${this.loop.col}:for${this.loop.header} `;
+      let output = `${this.loop.line}:${this.loop.col}| for${this.loop.header.text} ${chalk.red('Test Inelligible')}: `;
       if (!this.indexVariable) {
          output += 'Could not determine the loop\'s index variable.';
       } else if (typeof this.incrementValue !== 'number') {
@@ -228,8 +230,8 @@ export class EligiblityMessage implements CLIMessage {
       } else if (this.jumpStatements.length !== 0) {
          output += `The loop body has ${numFormat(this.jumpStatements.length, 'jump statement')}.`;
       } else if (this.loop.find('.//xmlns:label').length !== 0) {
-         output += `The loop body has ${numFormat(this.loop.find('.//xmlns:label').length, 'label statements')}.`
-      } else if (!this.containsMethodCall) {
+         output += `The loop body has ${numFormat(this.loop.find('.//xmlns:label').length, 'label statement')}.`
+      } else if (this.containsMethodCall) {
          output += `The loop body has ${numFormat(this.loop.find('.//xmlns:call').length,'unparallelizable method call')}.`;
       } else {
          if (this.nestedInelligibleLoop) {
@@ -242,7 +244,7 @@ export class EligiblityMessage implements CLIMessage {
    }
 
    public buildComplexBody() : string {
-      const errorStart = (numIssues: number) =>  numIssues > 1 ? 'And the' : 'Because the';
+      const errorStart = (numIssues: number) =>  numIssues !== 0 ? 'And the' : 'Because the';
       const numFormat = (amount: number, word: string) => amount === 1 ? `1 ${word}` 
          : `${amount} ${word}s`;
 
@@ -250,7 +252,7 @@ export class EligiblityMessage implements CLIMessage {
          let ret = '';
          for (let i = 0; i < arr.length && i < 3; i++) {
             const el = arr[i];
-            ret += `\t${el.line}:${el.col}| ${el.parentElement?.text ?? el.text}`;
+            ret += `\t${el.line}:${el.col}| ${el.text}`;
          }
          return ret;
       };
@@ -269,7 +271,7 @@ export class EligiblityMessage implements CLIMessage {
          body += `${errorStart(issues++)} loop's condition \u201C${this.loop.condition.text}\u201D is not in canonical from.\n`;
       }
       
-      const ivDefs = this.indexVariableRedefinitions;
+      const ivDefs = this.indexVariableRedefinitions.map((redef: Xml.Element) => redef.parentElement ?? redef);
       if (this.indexVariable && ivDefs.length !== 0) {
          body += `${errorStart(issues++)} loop redefines the index variable ${numFormat(ivDefs.length, 'time')}. For example:\n`
          body += examples(ivDefs) + '\n';
@@ -289,8 +291,13 @@ export class EligiblityMessage implements CLIMessage {
 
       const calls = this.loop.find('.//xmlns:call');
       if (calls.length > 0) {
-         body += `The loop body has ${numFormat(calls.length,'unparallelizable method call')}.`;
-         body += examples(labels) + '\n';
+         body += `${errorStart(issues++)} loop body has ${numFormat(calls.length,'unparallelizable method call')}.\n`;
+         body += examples(calls) + '\n';
+      }
+
+      if (this.nestedInelligibleLoop) {
+         body += `There's a loop nested within this loop at line ${this.nestedInelligibleLoop.line}, col ${this.nestedInelligibleLoop.col} that is ineligible.\n`;
+         body += `\t ${this.nestedInelligibleLoop.line}:${this.nestedInelligibleLoop.col}| ${this.nestedInelligibleLoop.header.text}\n`;
       }
       return body.substring(0, body.length - 1);
    }
@@ -308,9 +315,7 @@ export class EligiblityMessage implements CLIMessage {
       const body = this.buildComplexBody();
       const footer = chalk.red(`-`.repeat(80));
 
-      return `${header}
-${body}
-${footer}`;
+      return `${header}\n${body}\n${footer}`;
    }
 
    public get internalFormat() : string {
