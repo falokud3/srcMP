@@ -18,7 +18,7 @@ import * as CLO from '../CommandLineOutput.js'
 
 
 export function run(program: Xml.Element) : DDGraph {
-
+   const startTime = performance.now();
    CLO.output({format: (verbosity: Verbosity) => {
       if (verbosity !== Verbosity.Internal) return '';
       return '[Data Dependence Pass] Start'
@@ -33,9 +33,10 @@ export function run(program: Xml.Element) : DDGraph {
    //    ddg.addAllArcs(analyzeLoopForDependence(loop));
    // });
 
+   const endTime = performance.now();
    CLO.output({format: (verbosity: Verbosity) => {
       if (verbosity !== Verbosity.Internal) return '';
-      return '[Data Dependence Pass] End -- Duration: N/A' // TODO: Duration
+      return `[Data Dependence Pass] End -- Duration: ${(endTime - startTime).toFixed(3)}ms` // TODO: Duration
    }});
 
    return ddg;
