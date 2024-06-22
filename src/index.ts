@@ -8,12 +8,13 @@ import * as PLD from './ParallelizableLoopDetection/ParallelizableLoopDetectionP
 import { Verbosity, setVerbosity } from './CommandLineOutput.js';
 
 
+// TODO include --position and use that instead of line and col
 
 function runCompiler(program: Xml.Element) {
     // TODO: PARSE unit tag for namespaces
-    setVerbosity(Verbosity.Internal);
+    setVerbosity(Verbosity.Simple);
     const programDDG = DDT.run(program);
-    // PLD.run(program, programDDG);
+    PLD.run(program, programDDG);  
 }
 
 /**

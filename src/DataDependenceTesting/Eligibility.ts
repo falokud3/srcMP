@@ -1,4 +1,4 @@
-import { CLIMessage, Verbosity } from '../CommandLineOutput.js';
+import { CLIMessage, Verbosity, numFormat, errorStart, examples } from '../CommandLineOutput.js';
 import { getCanonicalIndexVariable } from '../Xml/ForLoop.js';
 import { getCanonicalIncrementValue } from '../Xml/ForLoop.js';
 import * as Xml from '../Xml/Xml.js';
@@ -7,7 +7,7 @@ import * as CLO from '../CommandLineOutput.js'
 import chalk from 'chalk';
 
 // TODO: Test
-export function extractOutermostDependenceTestEligibleLoops(root: Xml.Element): Xml.ForLoop[] {
+export function extractOutermostDependenceTestEligibleLoops(root: Xml.Element): [Xml.ForLoop[], EligiblityMessage[]] {
    const outerLoops = <Xml.ForLoop[]>root.find("descendant-or-self::xmlns:for[count(ancestor::xmlns:for)=0]");
 
    const ret: Xml.ForLoop[] = [];
@@ -36,12 +36,8 @@ export function extractOutermostDependenceTestEligibleLoops(root: Xml.Element): 
          if (nestedLoop) outerLoops.unshift(nestedLoop);
       }
    }
-
-   for (const mess of messages) {
-      CLO.output(mess);
-   }
    
-   return ret;
+   return [ret, messages];
 }
 function isLoopTestEligible(loop: Xml.ForLoop): [boolean, EligiblityMessage] {
    const message = new EligiblityMessage(loop);
@@ -216,8 +212,6 @@ export class EligiblityMessage implements CLIMessage {
    }
 
    public get simpleFormat() : string {
-      const numFormat = (amount: number, word: string) => amount === 1 ? `1 ${word}` 
-         : `${amount} ${word}s`;
       let output = `${this.loop.line}:${this.loop.col}| for${this.loop.header.text} ${chalk.red('Test Inelligible')}: `;
       if (!this.indexVariable) {
          output += 'Could not determine the loop\'s index variable.';
@@ -244,18 +238,6 @@ export class EligiblityMessage implements CLIMessage {
    }
 
    public buildComplexBody() : string {
-      const errorStart = (numIssues: number) =>  numIssues !== 0 ? 'And the' : 'Because the';
-      const numFormat = (amount: number, word: string) => amount === 1 ? `1 ${word}` 
-         : `${amount} ${word}s`;
-
-      const examples = (arr: Xml.Element[]) => {
-         let ret = '';
-         for (let i = 0; i < arr.length && i < 3; i++) {
-            const el = arr[i];
-            ret += `\t${el.line}:${el.col}| ${el.text}`;
-         }
-         return ret;
-      };
 
       let body = `The for loop ${this.loop.header.text} at line ${this.loop.line}, column ${this.loop.col} is not eligible for data dependence testing\n\n`;
       let issues = 0;
@@ -299,14 +281,13 @@ export class EligiblityMessage implements CLIMessage {
          body += `There's a loop nested within this loop at line ${this.nestedInelligibleLoop.line}, col ${this.nestedInelligibleLoop.col} that is ineligible.\n`;
          body += `\t ${this.nestedInelligibleLoop.line}:${this.nestedInelligibleLoop.col}| ${this.nestedInelligibleLoop.header.text}\n`;
       }
-      return body.substring(0, body.length - 1);
+      return body.substring(0, body.length - 1); // eliminates trailing \n
    }
 
    public get complexFormat() : string {
       if (this.eligible) return '';
 
       const filename = this.loop.get('/xmlns:unit')?.getAttribute('filename') ?? '';
-      
       
       const paddingLength = 80 - (25 + 1 + filename.length);
       const padding = '-'.repeat(paddingLength > 0 ? paddingLength : 0);

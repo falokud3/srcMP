@@ -33,7 +33,10 @@ declare module 'algebrite' {
      */
     export function simplify(expression: string) : U;
 
+    export function coeff(polynomial: string, variable: string, degree: string) : U;
+
     export function subst(newValue: string, oldValue: string, expression: string) : U;
 
+    export function clearall() : void;
 
 }

@@ -28,15 +28,18 @@ export function run(program: Xml.Element) : DDGraph {
 
    // AliasAnalysis.run();
 
-   const loops = extractOutermostDependenceTestEligibleLoops(program)
-   // .forEach((loop) => {
-   //    ddg.addAllArcs(analyzeLoopForDependence(loop));
-   // });
+   const [loops, messages] = extractOutermostDependenceTestEligibleLoops(program);
+
+   CLO.output(...messages);
+   
+   loops.forEach((loop) => {
+      ddg.addAllArcs(analyzeLoopForDependence(loop));
+   });
 
    const endTime = performance.now();
    CLO.output({format: (verbosity: Verbosity) => {
       if (verbosity !== Verbosity.Internal) return '';
-      return `[Data Dependence Pass] End -- Duration: ${(endTime - startTime).toFixed(3)}ms` // TODO: Duration
+      return `[Data Dependence Pass] End -- Duration: ${(endTime - startTime).toFixed(3)}ms`
    }});
 
    return ddg;
@@ -85,10 +88,7 @@ function analyzeLoopForDependence(loopNode: Xml.ForLoop) : DDGraph {
       }
    }
 
-   console.log(loopNode.toString())
-
    return loopDDG;
-
 }
 
 

@@ -8,7 +8,7 @@ export class ArrayAccess {
     public static readonly READ_ACCESS: ArrayAccessType = "Read";
 
     private access_type: ArrayAccessType;
-    private access: Xml.Element;
+    readonly access: Xml.Element;
      
     constructor(access: Xml.Element, accessType: ArrayAccessType) {
         this.access = access;

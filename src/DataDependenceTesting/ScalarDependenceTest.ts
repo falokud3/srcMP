@@ -1,13 +1,17 @@
 import * as Xml from '../Xml/Xml.js'
 
 export function collectScalarDependencies(loop: Xml.ForLoop) : Set<Xml.Element> {
-    const ret = new Set<Xml.Element>();
-    const def = loop.defSymbols;
-    const use = loop.useSymbols;
+    const ret = new Set<Xml.Element>(); // TODO: REMOVE USE OF ALL SETS
+    const def = loop.body.defSymbols;
+    // const use = loop.useSymbols;
+
+    const loopIVs = loop.getInnerLoopNest().map((loop) => Array.from(loop.header.defSymbols))
+        .flat();
     
     for (const symbol of def) {
         // TODO: Private or Reduction
         if (!isScalar(symbol)) continue;
+        if (loopIVs.some((iv) => symbol.equals(iv) )) continue;
 
         // TODO: pointer
         // TODO: Objects

@@ -84,8 +84,6 @@ export class BanerjeeTest {
                 break;
             }
 
-
-
             const bounds: number[] = []
 
             if ( N >= 0) {

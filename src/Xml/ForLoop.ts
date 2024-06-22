@@ -159,7 +159,7 @@ export class ForLoop extends XmlElement {
         if (init.contains('xmlns:decl')) {
             expr = init.get('xmlns:decl/xmlns:init/xmlns:expr');
         } else if (init.contains('xmlns:expr')) {
-            expr = init.get('xmlns:decl/xmlns:init/xmlns:expr');
+            expr = init.get('xmlns:expr');
         }
 
         if (!expr) throw new Error("Missing Lowerbound Expresion");

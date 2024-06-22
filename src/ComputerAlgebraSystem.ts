@@ -26,6 +26,7 @@ export const FALSE = 0;
  */
 // TODO: CHANGE TO return string | number
 export function simplify(expression: string) {
+    algebrite.clearall();
     return algebrite.simplify(expression).toString();
 }
 
