@@ -1,5 +1,5 @@
 
-import * as Xml from '../Xml/Xml.js'
+import * as Xml from '../Facades/Xml/Xml.js'
 import { ArrayAccess } from './ArrayAccess.js';
 import { ControlFlowGraph } from './ControlFlowGraph.js';
 

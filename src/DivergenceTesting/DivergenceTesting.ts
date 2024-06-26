@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import * as cuda from './cuda.js'
-import * as Xml from '../Xml/Xml.js'
+import * as Xml from '../Facades/Xml/Xml.js'
 import { Command } from 'commander'
 import { execSync } from 'child_process'
 import chalk from 'chalk';
@@ -160,6 +160,7 @@ function getFileXml(srcPath: string) : Xml.Element {
     }
 }
 
+// TODO: interface in /bin
 /**
  * Handles command line args and begins compiler run
  * @returns exit code

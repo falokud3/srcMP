@@ -1,9 +1,9 @@
-import { CLIMessage, Verbosity, numFormat, errorStart, examples } from '../CommandLineOutput.js';
-import { getCanonicalIndexVariable } from '../Xml/ForLoop.js';
-import { getCanonicalIncrementValue } from '../Xml/ForLoop.js';
-import * as Xml from '../Xml/Xml.js';
+import { CLIMessage, Verbosity, numFormat, errorStart, examples } from '../Facades/CommandLineOutput.js';
+import { getCanonicalIndexVariable } from '../Facades/Xml/ForLoop.js';
+import { getCanonicalIncrementValue } from '../Facades/Xml/ForLoop.js';
+import * as Xml from '../Facades/Xml/Xml.js';
 
-import * as CLO from '../CommandLineOutput.js'
+import * as CLO from '../Facades/CommandLineOutput.js'
 import chalk from 'chalk';
 
 // TODO: Test

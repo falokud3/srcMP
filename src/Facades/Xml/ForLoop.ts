@@ -1,11 +1,11 @@
 
 import { assert } from "console";
 
-import { ArrayAccess } from '../DataDependenceTesting/ArrayAccess.js';
+import { ArrayAccess } from '../../DataDependenceTesting/ArrayAccess.js';
 import XmlElement from "./Element.js";
 import * as Xml from './Xml.js'
-import * as RangeAnalysis from '../DataDependenceTesting/RangeAnalysis.js'
-import * as CAS from '../ComputerAlgebraSystem.js'
+import * as RangeAnalysis from '../../DataDependenceTesting/RangeAnalysis.js'
+import * as CAS from '../../Facades/ComputerAlgebraSystem.js'
 import exp from "constants";
 
 

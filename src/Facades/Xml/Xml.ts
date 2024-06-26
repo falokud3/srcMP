@@ -20,7 +20,7 @@ export * from './ForLoop.js'
 export * from './Expression.js'
 
 // namespace
-export const ns: any = {'xmlns': 'http://www.srcML.org/srcML/src'}
+export const ns: Record<string, string> = {'xmlns': 'http://www.srcML.org/srcML/src'}
 
 export function parseXmlFile(filePath: string) : XmlElement {
     return parseXmlString(readFileSync(filePath).toString());

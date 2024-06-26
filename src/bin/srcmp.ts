@@ -1,11 +1,11 @@
 #!/usr/bin/env node
-import * as Xml from './Xml/Xml.js'
-import * as DDT from './DataDependenceTesting/DataDependenceTestingPass.js'
+import * as Xml from '../Facades/Xml/Xml.js'
+import * as DDT from '../DataDependenceTesting/DataDependenceTestingPass.js'
 
 import { Command } from 'commander'
 import { execSync } from 'child_process';
-import * as PLD from './ParallelizableLoopDetection/ParallelizableLoopDetectionPass.js';
-import { Verbosity, setVerbosity } from './CommandLineOutput.js';
+import * as PLD from '../ParallelizableLoopDetection/ParallelizableLoopDetectionPass.js';
+import { Verbosity, setVerbosity } from '../Facades/CommandLineOutput.js';
 
 
 // TODO include --position and use that instead of line and col

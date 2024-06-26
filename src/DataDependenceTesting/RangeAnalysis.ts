@@ -1,9 +1,9 @@
 import { assert } from 'console';
-import * as Xml from '../Xml/Xml.js'
+import * as Xml from '../Facades/Xml/Xml.js'
 import { RangeDomain, Range } from './RangeDomain.js';
 import { ControlFlowGraph as CFG, ControlFlowNode as CFNode } from './ControlFlowGraph.js';
 import { execSync } from 'child_process';
-import * as ComplexMath from '../ComputerAlgebraSystem.js'
+import * as ComplexMath from '../Facades/ComputerAlgebraSystem.js'
 
 // NOTE: Using Xml.Element.toString() as the key, because using the object
 // * JS would store a reference not the value

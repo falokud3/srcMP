@@ -1,5 +1,5 @@
 // Data Dependence Test Framework
-import * as Xml from '../Xml/Xml.js'
+import * as Xml from '../Facades/Xml/Xml.js'
 
 import { ArrayAccess } from './ArrayAccess.js';
 import { DependenceVector, DependenceDir, mergeVectorSets } from './DependenceVector.js';
@@ -12,9 +12,9 @@ import * as AliasAnalysis from './AliasAnalysis.js'
 import * as RangeAnalysis from './RangeAnalysis.js'
 import { extractOutermostDependenceTestEligibleLoops } from './Eligibility.js';
 
-import * as ComputerAlgebraSystem from '../ComputerAlgebraSystem.js'
-import { Verbosity } from '../CommandLineOutput.js';
-import * as CLO from '../CommandLineOutput.js'
+import * as ComputerAlgebraSystem from '../Facades/ComputerAlgebraSystem.js'
+import { Verbosity } from '../Facades/CommandLineOutput.js';
+import * as CLO from '../Facades/CommandLineOutput.js'
 
 
 export function run(program: Xml.Element) : DDGraph {
@@ -184,8 +184,8 @@ function testPartition(parition: SubscriptPair[], partitoinDepVectors: Dependenc
 
       if (complexity === 0) {
          ret ||= testZIV(pair, pairDepVectors); // return false if independent
-      // } else if (complexity === 1) {
-         // ret ||= testSIV(pair, pairDependenceVectors);
+      } else if (complexity === 1) {
+         ret ||= testSIV(pair, pairDepVectors);
       } else {
          ret ||= testMIV(pair, pairDepVectors);
       }
@@ -220,6 +220,8 @@ function testZIV(pair: SubscriptPair, pairDependenceVectors: DependenceVector[])
 
 function testSIV(pair: SubscriptPair, pairDependenceVectors: DependenceVector[]) : boolean {
    throw new Error("Not Yet Implemented")
+
+
 }
 
 // test MIV

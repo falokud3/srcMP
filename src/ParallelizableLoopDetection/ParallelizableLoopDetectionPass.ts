@@ -1,10 +1,10 @@
 import chalk from "chalk";
-import { CLIMessage, Verbosity, examples, output } from "../CommandLineOutput.js";
+import { CLIMessage, Verbosity, examples, output } from "../Facades/CommandLineOutput.js";
 import { DataDependenceGraph } from "../DataDependenceTesting/DataDependenceGraph.js";
 import { Direction } from "../DataDependenceTesting/DependenceVector.js";
 import { extractOutermostDependenceTestEligibleLoops } from "../DataDependenceTesting/Eligibility.js";
 import { collectScalarDependencies } from "../DataDependenceTesting/ScalarDependenceTest.js";
-import * as Xml from '../Xml/Xml.js'
+import * as Xml from '../Facades/Xml/Xml.js'
 
 
 export function run(program: Xml.Element, programDDG: DataDependenceGraph) {

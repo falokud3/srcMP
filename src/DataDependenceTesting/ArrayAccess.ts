@@ -1,4 +1,4 @@
-import * as Xml from '../Xml/Xml.js'
+import * as Xml from '../Facades/Xml/Xml.js'
 
 export type ArrayAccessType = "Write" | "Read";
 

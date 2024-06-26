@@ -1,6 +1,6 @@
 import { assert } from 'console';
-import * as Xml from '../Xml/Xml.js'
-import * as ComputerAlgebraSystem from '../ComputerAlgebraSystem.js'
+import * as Xml from '../Facades/Xml/Xml.js'
+import * as ComputerAlgebraSystem from '../Facades/ComputerAlgebraSystem.js'
 
 export class RangeDomain {
     private ranges: Map<string, Range>;
