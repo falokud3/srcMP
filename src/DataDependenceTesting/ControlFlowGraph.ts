@@ -137,36 +137,38 @@ export class ControlFlowGraph {
     }
 }
 
+
+
 export class ControlFlowNode {
+    type: 'START' | 'NODE' | 'END' = 'NODE';
     private static maxID: number = 1;
 
-
-    private tail: ControlFlowNode[]; // used exclusively for build process then deleted
+    private _tail: ControlFlowNode[] = []; // used exclusively for build process then deleted
     private connectable: boolean = true;
 
-    private _xml: Xml.Element;
+    readonly xml: Xml.Element;
+    
 
-    private outEdges: ControlFlowNode[];
-    private inEdges: ControlFlowNode[];
+    private outEdges: ControlFlowNode[] = [];
+    private inEdges: ControlFlowNode[] = [];
 
     private order: number = -1; // topological order
 
     private _idNum: number; // for toDot ouptut 
 
+    // TODO: Refactor into one range object 
+    // [in, curr, out]
     public inRanges: Map<ControlFlowNode, RangeDomain> = new Map<ControlFlowNode, RangeDomain>();
-    private currRanges: RangeDomain;
+    private currRanges: RangeDomain = new RangeDomain();;
     public outRanges: Map<ControlFlowNode, RangeDomain> = new Map<ControlFlowNode, RangeDomain>();
 
+    // TODO: Somehow move all this RangeAnalysis gunk out
     private backedge: boolean | undefined;
     public loopVariants: Set<Xml.Element> | undefined = undefined;
 
     public constructor(data: Xml.Element) {
-        this._xml = data
-        this.outEdges = [];
-        this.inEdges = [];
-        this.tail = [];
+        this.xml = data
         this._idNum = ControlFlowNode.maxID++;
-        this.currRanges = new RangeDomain();
     }
 
     // this extending tail
@@ -174,7 +176,7 @@ export class ControlFlowNode {
         if (!this.outEdges.includes(node)) this.outEdges.push(node);
         if (!node.inEdges.includes(this)) node.inEdges.push(this);
         for (const tailNode of node.getTail()) {
-            if (!this.tail.includes(tailNode)) this.tail.push(tailNode);
+            if (!this._tail.includes(tailNode)) this._tail.push(tailNode);
         }
     }
 
@@ -187,16 +189,40 @@ export class ControlFlowNode {
             if (!tailNode.connectable) continue;
             tailNode.addAdjacent(to);
         }
-        if (updateTail) from.tail = to.getTail();
+        if (updateTail) from._tail = to.getTail();
     }
+
+    public get tail() : ControlFlowNode[] {
+        // TODO: Include Manual Overide for loops etc
+        const tailNodes: ControlFlowNode[] = [];
+        this.rGetTail(tailNodes, []);
+        return tailNodes;
+    }
+
+    private rGetTail(tailNodes: ControlFlowNode[], visited: number[]) {
+        // TODO: Optional worry about adding duplicates to tailNodes
+        if (visited.includes(this.num)) {
+            return; 
+        } else {
+            visited.push(this.num);
+        }
+
+        if (this.outEdges.length === 0) tailNodes.push(this);
+        for (const vertex of this.outEdges) { 
+            vertex.rGetTail(tailNodes, visited);
+        }
+    }
+
+
 
     // tail are all the nodes without outgoing edge
     public getTail() : ControlFlowNode[] {
-        return this.tail.length > 0 ? this.tail : [this];
+        // TODO: utilize this.tail()
+        return this._tail.length > 0 ? this._tail : [this];
     }
 
     public setTail(newTail: ControlFlowNode[]) : void {
-        this.tail = newTail;
+        this._tail = newTail;
     }
 
     public setConnectable(val: boolean) : void {
@@ -204,19 +230,15 @@ export class ControlFlowNode {
     }
 
     public addTailNode(node: ControlFlowNode) : void {
-        this.tail.push(node);
+        this._tail.push(node);
     }
 
     public popTailNode() : void {
-        this.tail.pop();
+        this._tail.pop();
     }
 
     public get adjacents() : ControlFlowNode[] {
         return this.outEdges;
-    }
-
-    public get xml() : Xml.Element {
-        return this._xml;
     }
 
     public get num() : number {
@@ -263,14 +285,14 @@ export class ControlFlowNode {
 
     public toString() : string {
         let ret: string = "";
-        ret += this._idNum + " " + this._xml.name;
+        ret += this._idNum + " " + this.xml.name;
         return ret;
     }
 
     public nodeInfoToString() : string {
         let ret = "";
-        ret += `node${this._idNum} [label="#${this.order}\\n<${this._xml.name}>\\n`;
-        ret += `${this._xml.text.trim()}\\n`;
+        ret += `node${this._idNum} [label="#${this.order}\\n<${this.xml.name}>\\n`;
+        ret += `${this.xml.text.trim()}\\n`;
         ret += `${this.currRanges.toString()}\\n"]`
         return ret;
     }

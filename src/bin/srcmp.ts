@@ -11,7 +11,8 @@ import { Verbosity, setVerbosity } from '../Facades/CommandLineOutput.js';
 // TODO include --position and use that instead of line and col
 
 function runCompiler(program: Xml.Element) {
-    // TODO: PARSE unit tag for namespaces
+    Xml.setNamespaces(program);
+
     setVerbosity(Verbosity.Simple);
     const programDDG = DDT.run(program);
     PLD.run(program, programDDG);  
@@ -24,6 +25,7 @@ function runCompiler(program: Xml.Element) {
  * @returns an xml object representing the file contents
  */
 function getFileXml(srcPath: string) : Xml.Element {
+    
     //TODO: Create SRCML interface for whole project to use
     const fileExtension = srcPath.substring(srcPath.lastIndexOf("."))
     

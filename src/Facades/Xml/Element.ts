@@ -1,27 +1,7 @@
 
 import * as Xml from './Xml.js'
 
-import xpath from 'xpath';
-
-/**
- * XML representation of the less than symbol (<)
- */
-export const LT = '&lt;';
-
-/**
- * XML representation of the greater than symbol (>)
- */
-export const GT = '&gt;';
-
-/**
- * XML representation of the less than or equal to symbol (<=)
- */
-export const LE = '&lt;=';
-
-/**
- * XML representation of the greater than or equal to symbol (>=)
- */
-export const GE = '&gt;=';
+import xpath, { isArrayOfNodes } from 'xpath';
 
 /**
  * Represents XML Element, like `<person/>`, not XML Comments or Attributes
@@ -62,14 +42,14 @@ export default class XmlElement {
     }
 
     public get line(): number {
-        // lineNumber was not included in the Element type, which is why this workaround is needed
-        // @ts-ignore
+        //@ts-expect-error lineNumber is unique to @xmldom/xmldom's DOM implementation and not in 
+            // general DOM type definition
         return this.domNode["lineNumber"] - 1; // -1, because srcml adds the unit tag
     }
 
     public get col(): number {
-        // columnNumber was not included in the Element type, which is why this workaround is needed
-        // @ts-ignore
+        //@ts-expect-error lineNumber is unique to @xmldom/xmldom's DOM implementation and not in 
+            // general DOM type definition
         return this.domNode['columnNumber'];
     }
 
@@ -149,7 +129,7 @@ export default class XmlElement {
      * @param namespace 
      * @returns the first Element found or null if none are found
      */
-    public get(xpathString: string, namespace: Record<string, string> = Xml.ns) : XmlElement | null {
+    public get(xpathString: string, namespace: Record<string, string> = Xml.ns()) : XmlElement | null {
         const queryResult = this.find(xpathString, namespace);
         return queryResult.length > 0 ? queryResult[0] : null;
     }
@@ -160,7 +140,7 @@ export default class XmlElement {
      * @param namespace 
      * @returns an array of Element objects (empty if none are found)
      */
-    public find(xpathString: string, namespace: Record<string, string> = Xml.ns) : XmlElement[] {
+    public find(xpathString: string, namespace: Record<string, string> = Xml.ns()) : XmlElement[] {
         // TODO: Experment with NS resolver to avoid xmlns: for everything
 
         const namespaceSelect = xpath.useNamespaces(namespace)
@@ -170,7 +150,7 @@ export default class XmlElement {
         if (xpath.isArrayOfNodes(queryResult)) {
             const ret: XmlElement[] = [];
             for (const node of queryResult) {
-                if (xpath.isElement(node)
+                if (xpath.isElement(node) 
                     && node.tagName === "for") {
                     ret.push(new Xml.ForLoop(node));
                 } else if (xpath.isElement(node)) {
@@ -197,7 +177,7 @@ export default class XmlElement {
      * @param namespace 
      * @returns true if contains, false otherwise
      */
-    public contains(xpathString: string, namespace: Record<string, string> = Xml.ns) : boolean {
+    public contains(xpathString: string, namespace: Record<string, string> = Xml.ns()) : boolean {
         return this.get(xpathString, namespace) != null
     }
 
@@ -207,7 +187,7 @@ export default class XmlElement {
      * @param namespace 
      * @returns 
      */
-    public containsName(xpathString: string, namespace: Record<string, string> = Xml.ns) : boolean {
+    public containsName(xpathString: string, namespace: Record<string, string> = Xml.ns()) : boolean {
         return this.find(`.//xmlns:name[text()='${xpathString}']`, namespace).length != 0;
     }
 
@@ -313,7 +293,20 @@ export default class XmlElement {
 
     }
 
+    get emptyLines() : number {
+        let lines = 0;
+        let prevIndex = 0;
+        let index = this.text.indexOf('\n');
+        while(index !== -1) {
+            if (this.text.substring(prevIndex, index).trim().length === 0) lines++;
+            prevIndex = index;
+            index = this.text.indexOf('\n', index + 1);
+        }
+        return lines;
+    }
+
 }
+
 
 function variableIsDefined(name: Xml.Element) : boolean {
     const nextOp = name.nextElement;

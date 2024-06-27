@@ -10,12 +10,16 @@ export function buildGraph(src: Xml.Element) : ControlFlowGraph {
     labelNodes = new Map<string, ControlFlowNode>();
     gotoJumps = [];
     
-    // TODO: START AND END NODES
     const graph = new ControlFlowGraph();
 
     const node = buildNode(src);
-    if (node) graph.addAllNodes(node, []);
-
+    if (node) {
+        graph.addAllNodes(node, []);
+        node.type = 'START';
+        for (const endNode of node.tail) {
+            endNode.type = 'END';
+        }
+    }
 
     return graph;
 }
@@ -70,12 +74,12 @@ function buildNode(src: Xml.Element) : ControlFlowNode | null {
 }
 
 function buildFunction(func: Xml.Element) : ControlFlowNode | null {
-    const block = func.get("./xmlns:block", Xml.ns);
+    const block = func.get("./xmlns:block");
     return buildBlock(block!);
 }
 
 function buildBlock(block: Xml.Element) : ControlFlowNode {
-    const blockContent = block.get("./xmlns:block_content", Xml.ns)!;
+    const blockContent = block.get("./xmlns:block_content")!;
     let ret: ControlFlowNode | null = null;
     const children = blockContent.childElements
 
@@ -140,9 +144,9 @@ function buildIf(ifStmt: Xml.Element) : ControlFlowNode {
     const tail: ControlFlowNode[] = [];
     let ifXml: Xml.Element | null = ifStmt.childElements[0];
 
-    const firstCondXml = ifXml.get("./xmlns:condition", Xml.ns)!;
+    const firstCondXml = ifXml.get("./xmlns:condition")!;
     const firstCond = buildNode(firstCondXml)!;
-    const firstBlockXml = ifXml.get("./xmlns:block", Xml.ns)!;
+    const firstBlockXml = ifXml.get("./xmlns:block")!;
     const firstBlock = buildBlock(firstBlockXml);
 
     ControlFlowNode.connectNodes(firstCond, firstBlock);
@@ -150,11 +154,11 @@ function buildIf(ifStmt: Xml.Element) : ControlFlowNode {
 
     let cond = firstCond;
     while (ifXml = ifXml.nextElement) {
-        const blockXml = ifXml.get("./xmlns:block", Xml.ns)!;
+        const blockXml = ifXml.get("./xmlns:block")!;
         const blockNode = buildBlock(blockXml);
 
         //const ifXml = ifStmt.childNodes()[i]; // <if> or <else>
-        const condXml = ifXml.get("./xmlns:condition", Xml.ns);
+        const condXml = ifXml.get("./xmlns:condition");
         if (condXml) { // <else> has no <cond>
             const newCond = buildNode(condXml)!;
             cond.addAdjacent(newCond);
@@ -164,7 +168,7 @@ function buildIf(ifStmt: Xml.Element) : ControlFlowNode {
         tail.push(...blockNode.getTail());
     }
 
-    if (!ifStmt.contains("./xmlns:else", Xml.ns)) tail.push(cond);
+    if (!ifStmt.contains("./xmlns:else")) tail.push(cond);
 
     firstCond.setTail(tail); 
     return firstCond;
@@ -191,11 +195,11 @@ function buildCase(caseStmt: Xml.Element) : ControlFlowNode {
 }
 
 function buildSwitch(switchStmt: Xml.Element) : ControlFlowNode {
-    const condXml = switchStmt.get("./xmlns:condition", Xml.ns)!;
+    const condXml = switchStmt.get("./xmlns:condition")!;
     const cond = buildNode(condXml)!;
 
     let hasDefaultCase: boolean = false;
-    const casesXml = switchStmt.get("./xmlns:block/xmlns:block_content", Xml.ns)!
+    const casesXml = switchStmt.get("./xmlns:block/xmlns:block_content")!
         .childElements
         .filter((node: Xml.Element) => {
             if (node.name == "case") return true;
@@ -226,11 +230,11 @@ function buildSwitch(switchStmt: Xml.Element) : ControlFlowNode {
 
 function buildWhile(whileStmt: Xml.Element) : ControlFlowNode {
 
-    const condition = whileStmt.get("./xmlns:condition", Xml.ns)!;
+    const condition = whileStmt.get("./xmlns:condition")!;
     const condNode = buildNode(condition)!;
 
             
-    const blockXml = whileStmt.get("./xmlns:block", Xml.ns)!;
+    const blockXml = whileStmt.get("./xmlns:block")!;
     const blockNode = buildBlock(blockXml);
     ControlFlowNode.connectNodes(condNode, blockNode);
     ControlFlowNode.connectNodes(blockNode, condNode, false);
@@ -247,20 +251,20 @@ function buildWhile(whileStmt: Xml.Element) : ControlFlowNode {
 // ! Assume for loop always has two semicolons
 function buildFor(forstmt: Xml.Element) : ControlFlowNode {
 
-    const initXml = forstmt.get("./xmlns:control/xmlns:init", Xml.ns)!;
+    const initXml = forstmt.get("./xmlns:control/xmlns:init")!;
     const initNode = buildNode(initXml)!;
     
     // condition
-    const condition = forstmt.get("./xmlns:control/xmlns:condition", Xml.ns)!;
+    const condition = forstmt.get("./xmlns:control/xmlns:condition")!;
     const condNode = buildNode(condition)!;
     ControlFlowNode.connectNodes(initNode, condNode);
 
     // body
-    const blockXml = forstmt.get("./xmlns:block", Xml.ns)!;
+    const blockXml = forstmt.get("./xmlns:block")!;
     const blockNode = buildBlock(blockXml)!;
     ControlFlowNode.connectNodes(initNode, blockNode);
 
-    const incrXML = forstmt.get("./xmlns:control/xmlns:incr", Xml.ns)!;
+    const incrXML = forstmt.get("./xmlns:control/xmlns:incr")!;
     const incrNode = buildNode(incrXML)!;
     ControlFlowNode.connectNodes(blockNode, incrNode);
     ControlFlowNode.connectNodes(incrNode, condNode);
@@ -277,11 +281,11 @@ function buildFor(forstmt: Xml.Element) : ControlFlowNode {
 
 function buildDo(doStmt: Xml.Element) : ControlFlowNode {
 
-    const blockXml = doStmt.get("./xmlns:block", Xml.ns)!;
+    const blockXml = doStmt.get("./xmlns:block")!;
     const blockNode = buildBlock(blockXml)!;
 
     // condition
-    const conditionXML = doStmt.get("./xmlns:condition", Xml.ns)!;
+    const conditionXML = doStmt.get("./xmlns:condition")!;
     const condNode = buildNode(conditionXML)!;
 
     condNode.loopVariants = doStmt.defSymbols;
@@ -308,12 +312,12 @@ function resolveLoopJumps(enterNode: ControlFlowNode, exitNode: ControlFlowNode)
 
 function buildLabel(labelStmt: Xml.Element) : ControlFlowNode {
     const labelNode = new ControlFlowNode(labelStmt);
-    const labelNameXml = labelStmt.get("./xmlns:name", Xml.ns)!;
+    const labelNameXml = labelStmt.get("./xmlns:name")!;
     labelNodes.set(labelNameXml.text, labelNode);
 
     for (let i = 0; i < gotoJumps.length; i++) {
         const gotoNode = gotoJumps[i];
-        const nodeLabelXml = gotoNode.xml.get("./xmlns:name", Xml.ns)!;
+        const nodeLabelXml = gotoNode.xml.get("./xmlns:name")!;
         if (nodeLabelXml.text === labelNameXml.text) {
             gotoNode.addAdjacent(labelNode);
             gotoJumps.splice(i, 1);
@@ -325,7 +329,7 @@ function buildLabel(labelStmt: Xml.Element) : ControlFlowNode {
 
 function buildGoto(gotoStmt: Xml.Element) : ControlFlowNode {
     const gotoNode = new ControlFlowNode(gotoStmt);
-    const labelNameXml = gotoStmt.get("./xmlns:name", Xml.ns)!;
+    const labelNameXml = gotoStmt.get("./xmlns:name")!;
     const labelNode = labelNodes.get(labelNameXml.text);
     if (labelNode) {
         gotoNode.addAdjacent(labelNode);

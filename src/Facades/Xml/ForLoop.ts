@@ -22,12 +22,12 @@ export class ForLoop extends XmlElement {
 
     // gets the loopnest that surrounds this loop (includes loop)
     public getEnclosingLoopNest() : ForLoop[] {
-        return <ForLoop[]> this.find("ancestor-or-self::xmlns:for", Xml.ns);
+        return <ForLoop[]> this.find("ancestor-or-self::xmlns:for");
     }
 
     // gets the loops nested within this loop (includes input loop)
     public getInnerLoopNest() : ForLoop[] {
-        return <ForLoop[]> this.find("descendant-or-self::xmlns:for", Xml.ns);
+        return <ForLoop[]> this.find("descendant-or-self::xmlns:for");
     }
 
     // returns the intersection of two enclosing loop nests
@@ -69,7 +69,7 @@ export class ForLoop extends XmlElement {
 
     public getLoopIndexVariableName() : XmlElement | null {
         assert(this.name === "for")
-        return this.get("xmlns:control/xmlns:incr/xmlns:expr/xmlns:name", Xml.ns);
+        return this.get("xmlns:control/xmlns:incr/xmlns:expr/xmlns:name");
     }
 
     /**

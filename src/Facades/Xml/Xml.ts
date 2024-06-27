@@ -20,7 +20,19 @@ export * from './ForLoop.js'
 export * from './Expression.js'
 
 // namespace
-export const ns: Record<string, string> = {'xmlns': 'http://www.srcML.org/srcML/src'}
+let fileNameSapce: Record<string, string> = {'': 'http://www.srcML.org/srcML/src'};
+
+
+export function setNamespaces(unit: XmlElement) {
+    assert(unit.name === 'unit')
+    //@ts-expect-error _nsMap is unique to @xmldom/xmldom's DOM implementation and not in 
+        // general DOM type definition 
+    const newNS: Record<string, string> = unit.domElement['_nsMap'];
+    newNS['xmlns'] = newNS[''];
+    fileNameSapce = newNS;
+}
+
+export const ns = () => fileNameSapce;
 
 export function parseXmlFile(filePath: string) : XmlElement {
     return parseXmlString(readFileSync(filePath).toString());

@@ -20,7 +20,7 @@ export class ArrayAccess {
     }
 
     get enclosingLoop() : Xml.ForLoop | undefined {
-        const enclosing_loops = <Xml.ForLoop[]> this.access.find("ancestor::xmlns:for", Xml.ns);
+        const enclosing_loops = <Xml.ForLoop[]> this.access.find("ancestor::xmlns:for");
         return enclosing_loops.at(-1);
     }
 
@@ -29,11 +29,11 @@ export class ArrayAccess {
     }
     
     public getArrayDimensionality() : number {
-        return this.access.find("xmlns:index", Xml.ns).length;
+        return this.access.find("xmlns:index").length;
     }
 
     public getDimension(dimension: number) : Xml.Element | null {
-        return this.access.get(`xmlns:index[${dimension}]`, Xml.ns);
+        return this.access.get(`xmlns:index[${dimension}]`);
     }
 
     // TODO: getters & setters

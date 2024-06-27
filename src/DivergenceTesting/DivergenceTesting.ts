@@ -117,17 +117,16 @@ function runDivergenceTest(func: Xml.Element) {
     }
 
     const divergentCoverage = divergentIfs.map((ifXml) => {
-        const block = ifXml.get('xmlns:block/xmlns:block_content')!;
+        const block = ifXml.get('xmlns:block')!;
         const startLine = Number(block.getAttribute('pos:start')!.split(':')[0]);
         const endLine = Number(block.getAttribute('pos:end')!.split(':')[0]);
-        return endLine - startLine + 1;
+        return endLine - startLine - ifXml.emptyLines + 1;
     }).reduce((sum, curr) => sum + curr, 0);
 
-    const block = func.get('xmlns:block/xmlns:block_content')!;
+    const block = func.get('xmlns:block')!;
     const startLine = Number(block.getAttribute('pos:start')!.split(':')[0]);
     const endLine = Number(block.getAttribute('pos:end')!.split(':')[0]);
-
-    const metric = divergentCoverage / (endLine - startLine) * 100;
+    const metric = (divergentCoverage / (endLine - startLine - block.emptyLines + 1)) * 100;
 
     console.log(`Divergent Coverage: ${metric.toPrecision(4)}%`);
 }
@@ -135,6 +134,7 @@ function runDivergenceTest(func: Xml.Element) {
 function runTest(xml: Xml.Element) {
     // ? Nested Functions
     // TODO: make language adaptable
+    Xml.setNamespaces(xml);
     const kernelFunctions = xml.find(`.//xmlns:function[xmlns:type/xmlns:name[text()='__global__']]`);
 
     for (const func of kernelFunctions) {
