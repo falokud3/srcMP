@@ -5,10 +5,70 @@ import * as Xml from '../Facades/Xml/Xml.js'
 import { Command } from 'commander'
 import { execSync } from 'child_process'
 import chalk from 'chalk';
+import { readFileSync } from 'fs';
 
+type OpDict = {
+    [op: string]: {
+        min: number;
+        max: number;
+    } | undefined;
+    'DEFAULT': {
+        min: number;
+        max: number
+    }
+}
 
-// get all the names
-// find latest assignment for each name
+function formatOP(op: string) : string {
+    switch (op) {
+        case '+':
+        case '+=':
+        case '-':
+        case '-=':
+            return 'ADD';
+        case '*':
+        case '*=':
+            return 'MUL';
+        case '/':
+        case '/=':
+            return 'DIV'
+        case '<':
+        case '<=':
+        case '>':
+        case '>=':
+        case '&&':
+        case '!=':
+        case '==':
+        case '||':
+            return 'LOP'
+        default:
+            return op;
+    }
+}
+
+function estimateClockCycles(xml: Xml.Element, dict: OpDict) : [number, number, number] {
+    const ops = xml.find('.//xmlns:operator').filter((op) => ![',','.', '=',].includes(op.text));
+    const reads = xml.find('.//xmlns:name[count(ancestor::xmlns:name)=0]');
+    const calls = xml.find('.//xmlns:call');
+
+    let min = 0;
+    let max = 0;
+
+    for (const op of ops.concat(calls)) {
+        let cycles = dict[formatOP(op.text)];
+        if (cycles === undefined) cycles = dict.DEFAULT;
+
+        // console.log(`${op.text} -> [${cycles.min},${cycles.max}] ${dict[formatOP(op.text)] === undefined ? '(DEFAULT)' : ''}`)
+        min += cycles.min;
+        max += cycles.max;
+    }
+
+    for (const read of reads) {
+        min += dict['MOV']?.min ?? dict.DEFAULT.min;
+        max += dict['MOV']?.max ?? dict.DEFAULT.max;
+    }
+
+    return [min, max, (min + max) / 2];
+}
 
 type Point = {line: number, col: number};
 const NegativeInfinityPoint = {line: -Infinity, col: -Infinity};
@@ -139,8 +199,22 @@ function runTest(xml: Xml.Element) {
     Xml.setNamespaces(xml);
     const kernelFunctions = xml.find(`.//xmlns:function[xmlns:type/xmlns:name[text()='__global__']]`);
 
+    const fpgaDict: OpDict = JSON.parse(readFileSync('src/DivergenceTesting/ClockCycles/hlsclockcycles.json').toString())
+    const gpuDict: OpDict = JSON.parse(readFileSync('src/DivergenceTesting/ClockCycles/turingclockcycles.json').toString())
+    const TITAN_RTX_FREQ_MHZ = 1350;
+    const FPGA_MHZ = 50;
+
     for (const func of kernelFunctions) {
-        runDivergenceTest(func);
+        // runDivergenceTest(func);
+        const fpgaCycles = estimateClockCycles(func, fpgaDict);
+        const gpuCycles = estimateClockCycles(func, gpuDict)
+        const fpgaEst = estimateClockCycles(func, fpgaDict).map((est) => (est / FPGA_MHZ / 1000).toPrecision(3));
+        const gpuEst = estimateClockCycles(func, gpuDict).map((est) => (est / TITAN_RTX_FREQ_MHZ / 1000).toPrecision(3));
+        console.log(`FPA Cycles Estimate Min: ${fpgaCycles[0]} Max:${fpgaCycles[1]} Avg:${fpgaCycles[2]}`);
+        console.log(`GPU Cycles Estimate Min: ${gpuCycles[0]} Max:${gpuCycles[1]} Avg:${gpuCycles[2]}`);
+        console.log(`FPA Estimate Min: ${fpgaEst[0]}ms Max:${fpgaEst[1]}ms Avg:${fpgaEst[2]}ms`);
+        console.log(`GPU Estimate Min: ${gpuEst[0]}ms Max:${gpuEst[1]}ms Avg:${gpuEst[2]}ms`);
+
     }
 }
 

@@ -184,8 +184,8 @@ function testPartition(parition: SubscriptPair[], partitoinDepVectors: Dependenc
 
       if (complexity === 0) {
          ret ||= testZIV(pair, pairDepVectors); // return false if independent
-      } else if (complexity === 1) {
-         ret ||= testSIV(pair, pairDepVectors);
+      // } else if (complexity === 1) {
+         // ret ||= testSIV(pair, pairDepVectors);
       } else {
          ret ||= testMIV(pair, pairDepVectors);
       }
