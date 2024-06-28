@@ -14,10 +14,13 @@ type Point = {line: number, col: number};
 const NegativeInfinityPoint = {line: -Infinity, col: -Infinity};
 
 function testMultipleBranches(variable: Xml.Element, latest: Xml.Element, depth: number) : boolean {
+    const padding = `${" ".repeat(depth)}`;
     const ifs = latest.get('ancestor::xmlns:if_stmt')!.find('xmlns:if');
     for (let i = ifs.length - 1; i >= 0; i--) {
-        console.log()
-        if (testDependenceHierachy(variable, depth++, ifs[i].nextElement!)) return true;
+        const otherBranchResult = getLatestAssignment(variable, ifs[i].nextElement!)
+        if (!otherBranchResult[0]) continue;
+        console.log(`${padding}variable "${variable.text}" may also depends on "${otherBranchResult[0].text}"`);
+        if (testDependenceHierachy(otherBranchResult[0], depth + 1, otherBranchResult[1])) return true;
     }
     return false;
 }
@@ -94,7 +97,6 @@ function testDependenceHierachy(xml: Xml.Element, depth: number = 0, before?: Po
         if (testDependenceHierachy(latest, depth + 1, beforePoint)) return true;
 
         if (latest.contains('ancestor::xmlns:else')) {
-            console.log(`${padding}Testing other branches`);
             if (testMultipleBranches(variable, latest, depth)) return true;
         }
     }

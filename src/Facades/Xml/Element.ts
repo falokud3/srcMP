@@ -3,6 +3,7 @@ import * as Xml from './Xml.js'
 
 import xpath, { isArrayOfNodes } from 'xpath';
 
+
 /**
  * Represents XML Element, like `<person/>`, not XML Comments or Attributes
  * ! Aliased as Xml.Element
@@ -19,7 +20,7 @@ export default class XmlElement {
      * (intellisense may show more properties than are actually accessable)
      */
     // TODO: add link
-    private domNode: Element; 
+    readonly domNode: Element; 
     
 
     /**
@@ -29,16 +30,8 @@ export default class XmlElement {
      */
     static LINE_NUMBER_OFFSET = 1;
 
-    public constructor(domElement: Element) {
-        this.domNode = domElement;
-    }
-
-    /**
-     * Returns the internal xml object used by the library
-     * * Use of this is discouraged, due to the increase in coupling
-     */
-    public get domElement(): Element {
-        return this.domNode;
+    public constructor(domNode: Element) {
+        this.domNode = domNode;
     }
 
     public get line(): number {
@@ -233,19 +226,31 @@ export default class XmlElement {
     }
 
     public copy() : XmlElement {
-        return new XmlElement(this.domNode.cloneNode(true) as Element);
+        const cloneDoc = this.domNode.ownerDocument.cloneNode(true);
+        const attributes: string[] = []
+        for (const attr of Array.from(this.domNode.attributes)) {
+            attributes.push(`@${attr.name} = '${attr.value}'`)
+        }
+        //@ts-expect-error
+        const matches = (new XmlElement(cloneDoc['documentElement'])).find(`//${this.domNode.prefix ?? 'xmlns'}:${this.name}[${attributes.join(' and ')}]`)
+
+        const copy = matches.find((element) => this.equals(element));
+
+        if (!copy) throw new Error('Copy Failed')
+
+        return copy;
     }
 
     public replace(newNode: XmlElement) : XmlElement {
 
         // TODO: Inplace replacement or generate a copy
 
-        const domParent = this.parentElement?.domElement;
+        const domParent = this.parentElement?.domNode;
 
         // TODO: CHANGE
         if (!domParent) throw new Error("OH BROTHER THIS GUY STINKS");
 
-        domParent.replaceChild(newNode.domElement, this.domElement);
+        domParent.replaceChild(newNode.domNode, this.domNode);
 
         return newNode;
         // // no return

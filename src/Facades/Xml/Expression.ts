@@ -37,7 +37,7 @@ export function getRHSFromExpr(exprXml: XmlElement) : XmlElement {
 
     if (!expr) throw new Error();
 
-    const children = Array.from(expr.domElement.childNodes);
+    const children = Array.from(expr.domNode.childNodes);
 
     const op = expr.childElements.find((node) => {return isAssignmentOperator(node) 
         || isAugAssignmentOperator(node);});
@@ -46,7 +46,7 @@ export function getRHSFromExpr(exprXml: XmlElement) : XmlElement {
     });
 
     for (let i = 0; i <= stopIndex; i++) {
-        expr.domElement.removeChild(children[i]);
+        expr.domNode.removeChild(children[i]);
     }
 
     return expr;
@@ -57,13 +57,13 @@ export function getRHSFromOp(op: XmlElement) : XmlElement {
 
     if (!expr) throw new Error();
 
-    const children = Array.from(expr.domElement.childNodes);
+    const children = Array.from(expr.domNode.childNodes);
     const stopIndex = children.findIndex((child) => {
         return child.textContent === op.text;
     });
 
     for (let i = 0; i <= stopIndex; i++) {
-        expr.domElement.removeChild(children[i]);
+        expr.domNode.removeChild(children[i]);
     }
 
     return expr;
@@ -81,7 +81,7 @@ export function regularizeAugAssignment(augAssign: XmlElement) : XmlElement {
     const buffer = execSync(`srcml --text '${newExpression}' --language ${language}`, {timeout: 10000});
     const xml = Xml.parseXmlString(buffer.toString()).get("./xmlns:expr")!;
 
-    expr.domElement.parentNode?.replaceChild(xml.domElement, expr.domElement);
+    expr.domNode.parentNode?.replaceChild(xml.domNode, expr.domNode);
     return expr;
 
 }

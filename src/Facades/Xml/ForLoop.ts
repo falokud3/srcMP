@@ -17,7 +17,7 @@ export class ForLoop extends XmlElement {
     }
 
     public static createLoop(element: XmlElement) {
-        return new ForLoop(element.domElement);
+        return new ForLoop(element.domNode);
     }
 
     // gets the loopnest that surrounds this loop (includes loop)

@@ -137,12 +137,12 @@ function updateAssignment(node: CFNode) : void {
         const rhsRoot = Xml.parseXmlString(buffer.toString());
 
         from = expr.copy()
-        const kiddos = Array.from(from.domElement.childNodes);
+        const kiddos = Array.from(from.domNode.childNodes);
         const aopi = kiddos.findIndex((node) => {
             return [...(node.textContent ?? "")].filter((char) => char === '=' ).length === 1
         });
         for (let i = 0; i <= aopi; i++) {
-            from.domElement.removeChild(kiddos[i]);
+            from.domNode.removeChild(kiddos[i]);
         }
 
     }
