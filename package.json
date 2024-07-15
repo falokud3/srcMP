@@ -10,7 +10,8 @@
     "fastbuild": "sucrase ./src -d ./build --transforms typescript --quiet"
   },
   "bin": {
-    "srcmp": "./build/bin/srcmp.js"
+    "srcmp": "./build/bin/srcmp.js",
+    "srcsim": "./build/bin/srcsim.js"
   },
   "keywords": [],
   "author": "",

@@ -1,12 +1,16 @@
 import { assert } from 'console';
 import * as Xml from '../Facades/Xml/Xml.js'
-import * as ComputerAlgebraSystem from '../Facades/ComputerAlgebraSystem.js'
+import * as CAS from '../Facades/ComputerAlgebraSystem.js'
 
 export class RangeDomain {
     private ranges: Map<string, Range>;
 
     public constructor() {
         this.ranges = new Map<string, Range>();
+    }
+
+    get size() : number {
+        return this.ranges.keys.length;
     }
 
     public copy() : RangeDomain {
@@ -22,16 +26,13 @@ export class RangeDomain {
         return range;
     }
 
-    public setRange(variable: string, lowerbound: string, upperbound: string) {
-        this.ranges.set(variable, new Range(variable, lowerbound, upperbound));
-    }
-
     public removeRange(variable: string) : boolean {
         return this.ranges.delete(variable);
     }
 
-    public setVarRange(variable: string, varrange: Range) {
-        this.ranges.set(variable, varrange);
+    // TODO: Remove
+    public setRange(range: Range) {
+        this.ranges.set(range.variable, range);
     }
 
     public killArraysWith(symbol: Xml.Element) {
@@ -61,16 +62,13 @@ export class RangeDomain {
         for (const range of this.ranges) {
             if (replacement instanceof Range) {
                 if (replacement.isConstant) {
-
-                    //! i replacing integer
-                    //TODO: FIX
-                    range[1].lowerbound = range[1].lowerbound.replace(original.text, replacement.lowerbound)
-                    range[1].upperbound = range[1].upperbound.replace(original.text, replacement.upperbound)
+                    range[1].lowerbound = Range.substitute(range[1].lowerbound, original.text, replacement.lowerbound);
+                    range[1].upperbound = Range.substitute(range[1].upperbound, original.text, replacement.upperbound);
                 }
             } else {
-                //TODO: FIX
-                range[1].lowerbound = range[1].lowerbound.replace(original.text, replacement.text)
-                range[1].upperbound = range[1].upperbound.replace(original.text, replacement.text)
+                range[1].lowerbound = Range.substitute(range[1].lowerbound, original.text, replacement.text)
+                range[1].upperbound = Range.substitute(range[1].upperbound, original.text, replacement.text)
+
             }
         }
     }
@@ -92,15 +90,16 @@ export class RangeDomain {
 
         if (expression instanceof Xml.Element && variable instanceof Xml.Element) {
             const range = this.getRange(variable.text);
-            //TODO: FIX
-            return range && range.isConstant ? ComputerAlgebraSystem.simplify(expression.text.replace(variable.text, range.lowerbound)) 
+            
+            return range && range.isConstant ? CAS.simplify(Range.substitute(expression.text, variable.text, range.lowerbound)) 
                 : null;
         } else {
             const expr = <string> expression;
             const vari = <string> variable;
             const range = this.getRange(vari);
-            //TODO: FIX
-            return range && range.isConstant ? ComputerAlgebraSystem.simplify(expr.replace(vari, range.lowerbound)) 
+
+            
+            return range && range.isConstant ? CAS.simplify(Range.substitute(expr, vari, range.lowerbound)) 
                 : null;
         }
 
@@ -139,11 +138,11 @@ export class RangeDomain {
 
     public narrowRanges(other: RangeDomain) {
         for (const variable of other.ranges.keys()) {
-            const result = RangeDomain.narrowVarRanges(other.getRange(variable)!, this.getRange(variable)!, this);
-            if (result.isOmega) {
+            const result = RangeDomain.narrowRange(other.getRange(variable)!, this.getRange(variable)!);
+            if (result?.isOmega ?? true) {
                 this.removeRange(variable);
             } else {
-                this.setVarRange(variable, result);
+                this.setRange(result!);
             }
         }
 
@@ -164,90 +163,75 @@ export class RangeDomain {
         }
 
         for (const affect of affected) {
-            const result = RangeDomain.widenRange(other.getRange(affect)!, this.getRange(affect)!, this);
+            const result = RangeDomain.widenRange(this, other.getRange(affect), this.getRange(affect));
             if (result.isOmega) {
                 this.removeRange(affect)
             } else {
-                this.setVarRange(affect, result)
+                this.setRange(result)
             }
         }
     }
 
-    public unionRange(variable: string, varRange: Range) : void {
-        const result = RangeDomain.unionVarRanges(variable, this.getRange(variable)!, 
-            varRange);
-        if (result.isOmega) {
-            this.removeRange(variable);
-        } else {
-            this.setVarRange(variable, result);
-        }
-    }
-
-    public unionRanges(otherRange: RangeDomain) : void {
+    public unionRangeDomains(otherRange: RangeDomain) : void {
         const vars = new Set(this.ranges.keys());
         for (const key of otherRange.ranges.keys()) {
             vars.add(key);
         }
         for (const variable of vars) {
-            const result = RangeDomain.unionVarRanges(variable, this.getRange(variable)!, 
-                otherRange.getRange(variable)!);
+            const result = Range.unionRanges(this.getRange(variable), 
+                otherRange.getRange(variable));
             if (result.isOmega) {
                 this.removeRange(variable)
             } else {
-                this.setVarRange(variable, result);
+                this.setRange(result);
             }
         }
     }
 
-    public static widenRange(e: Range, widen: Range, rd: RangeDomain) : Range {
+    intersectRanges(other: RangeDomain) : void {
+        for (const range of other.ranges) {
+            if (!this.ranges.has(range[0])) this.setRange(range[1]);
+        }
+
+        for (const range of this.ranges) {
+            const newRange = Range.intersectRanges(range[1], other.getRange(range[0]))
+        }
+    }
+
+    public static widenRange(rd: RangeDomain, e?: Range, widen?: Range) : Range {
+
+        if (!e && !widen) return new Range('NULL', String(-Infinity), String(Infinity));
+
+        if (!e) return widen!.copy();
+        else if (!widen) return e!.copy();
+
         if (e.isOmega || widen.isOmega){
             // TODO: CHECK EXPECTED BEHAVIOR
-            return e;
+            return e.copy();
         }
-        // ! isEmpty
 
+        const ret = e.copy();
         if (e.lowerbound !== widen.lowerbound) {
-            e.lowerbound = String(-Infinity);
+            ret.lowerbound = String(-Infinity);
         }
 
         if (e.upperbound !== widen.upperbound) {
-            e.upperbound = String(Infinity);
+            ret.upperbound = String(Infinity);
         }
 
-        return e;
+        return ret;
     }
 
-    public static unionVarRanges(variable: string, r1: Range, r2: Range) : Range {
-        if (r1 === undefined) {
-            return r2;
-        } else if (r2 === undefined) {
-            return r1;
-        }
-
-        // TODO: IMPLEMENT
-        // const LB = Math.min(r1.lb, r2.lb);
-        // const UB = Math.max(r1.ub, r2.ub);
-        // throw new Error("NOT IMPLEMENTED")
-        return r1;
-    }
 
     // TODO REVIEW
-    public static narrowVarRanges(e: Range, narrow: Range, rd: RangeDomain) : Range {
-        if (narrow.isOmega) {
-            return e;
-        } else if (e.isOmega) {
-            return narrow;
-        }
+    public static narrowRange(e: Range, narrow: Range) : Range {
+        if (narrow.isOmega) return e.copy();
+        else if (e.isOmega) return narrow.copy();
 
-        if (Number(e.lowerbound) === -Infinity) {
-            e.lowerbound = narrow.lowerbound;
-        }
-
-        if (Number(e.upperbound) === Infinity) {
-            e.upperbound = narrow.upperbound;
-        }
-
-        return e;
+        const ret = e.copy();
+        if (Math.abs(Number(ret.lowerbound)) === Infinity) ret.lowerbound = narrow.lowerbound;
+        if (Math.abs(Number(ret.upperbound)) === Infinity) ret.upperbound = narrow.upperbound;
+        return ret;
     }
 
     public toString() : string {
@@ -266,19 +250,20 @@ export class RangeDomain {
 
 export class Range {
     
-    // TODO: FLOAT
     private lb: string;
     private ub: string;
+    private stride: string;
     public variable: string;
 
-    public constructor(variable: string, lowerbound: string, upperbound: string) {
+    public constructor(variable: string, lowerbound: string, upperbound: string, stride?: string) {
         this.variable = variable;
         this.lb = lowerbound;
         this.ub = upperbound;
+        this.stride = stride ?? '1';
     }
 
     public copy() : Range {
-        return new Range(this.variable, this.lb, this.ub);
+        return new Range(this.variable, this.lb, this.ub, this.stride);
     }
 
     public get lowerbound() : string {
@@ -323,6 +308,56 @@ export class Range {
     public toString() : string {
         return this.isConstant ? `${this.variable} = ${this.lb}`
             :`${this.lb} < ${this.variable} < ${this.ub}`;
+    }
+
+    static substitute(inputString: string, original: string, replacement: string) : string {
+        return inputString.replace(new RegExp("\\b"+original+"\\b"), replacement)
+    }
+
+    public static unionRanges(r1?: Range, r2?: Range) : Range {
+
+        if (!r1 && !r2) return new Range('NULL', String(-Infinity), String(Infinity));
+        else if (!r1) {
+            return r2!;
+        } else if (!r2) {
+            return r1!;
+        }
+ 
+        const lbRelation = CAS.compare(r1.lowerbound, r2.lowerbound);
+        const ubRelation = CAS.compare(r1.upperbound, r2.upperbound);
+        
+        const ret = new Range(r1.variable, String(-Infinity), String(Infinity));
+
+        if (lbRelation === '=' || lbRelation === '>' || lbRelation === '>=') ret.lowerbound = r1.lowerbound;
+        else if (lbRelation === '<') ret.lowerbound = r2.lowerbound;
+
+        if (ubRelation === '=' || ubRelation === '>' || ubRelation === '>=') ret.upperbound = r1.upperbound;
+        else if (ubRelation === '<') ret.upperbound = r2.upperbound;
+
+        return ret;
+    }
+
+    static intersectRanges(r1?: Range, r2?: Range) : Range {
+        if (!r1 && !r2) return new Range('NULL', String(-Infinity), String(Infinity));
+        else if (!r1) {
+            return r2!;
+        } else if (!r2) {
+            return r1!;
+        }
+
+        const lbRelation = CAS.compare(r1.lowerbound, r2.lowerbound);
+        const ubRelation = CAS.compare(r1.upperbound, r2.upperbound);
+
+        const ret = new Range(r1.variable, String(-Infinity), String(Infinity));
+
+        if (lbRelation === '=' || lbRelation === '>' || lbRelation === '>=') ret.lowerbound = r1.lowerbound;
+        else if (lbRelation === '<') ret.lowerbound = r2.lowerbound;
+
+        if (ubRelation === '=' || ubRelation === '>' || ubRelation === '>=') ret.upperbound = r2.upperbound;
+        else if (ubRelation === '<') ret.upperbound = r1.upperbound;
+
+        return ret;
+
     }
 }
 

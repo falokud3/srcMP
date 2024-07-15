@@ -146,7 +146,7 @@ export class ControlFlowNode {
     private _tail: ControlFlowNode[] = []; // used exclusively for build process then deleted
     private connectable: boolean = true;
 
-    readonly xml: Xml.Element;
+    public xml: Xml.Element;
     
 
     private outEdges: ControlFlowNode[] = [];
@@ -159,7 +159,7 @@ export class ControlFlowNode {
     // TODO: Refactor into one range object 
     // [in, curr, out]
     public inRanges: Map<ControlFlowNode, RangeDomain> = new Map<ControlFlowNode, RangeDomain>();
-    private currRanges: RangeDomain = new RangeDomain();;
+    private currRanges: RangeDomain = new RangeDomain(); // TODO: Remove
     public outRanges: Map<ControlFlowNode, RangeDomain> = new Map<ControlFlowNode, RangeDomain>();
 
     // TODO: Somehow move all this RangeAnalysis gunk out

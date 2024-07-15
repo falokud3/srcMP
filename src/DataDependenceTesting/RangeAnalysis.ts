@@ -4,13 +4,14 @@ import { RangeDomain, Range } from './RangeDomain.js';
 import { ControlFlowGraph as CFG, ControlFlowNode as CFNode } from './ControlFlowGraph.js';
 import { execSync } from 'child_process';
 import * as ComplexMath from '../Facades/ComputerAlgebraSystem.js'
+import { createXml } from '../Facades/srcml.js';
 
 // NOTE: Using Xml.Element.toString() as the key, because using the object
 // * JS would store a reference not the value
 const rangeDomains = new Map<string, RangeDomain>();
 
 export function getRanges(root: Xml.Element) : Map<string, RangeDomain> {
-    assert(root.name === "function" || root.name === "unit");
+    // TO
 
     // TODO : ALIAS AnALYSIS
 
@@ -18,7 +19,7 @@ export function getRanges(root: Xml.Element) : Map<string, RangeDomain> {
 
     cfg.topologicalSort();
     iterateToFixpoint(cfg, true);
-    // iterateToFixpoint(cfg, false);
+    iterateToFixpoint(cfg, false);
 
     // TODO: FILTER UNSAFE RANGES
     return cfg.getRangeMap(root);
@@ -55,7 +56,7 @@ function iterateToFixpoint(graph: CFG, widen: boolean = false) : void {
         const currRanges = new RangeDomain();
         for (const inData of node.inRanges) {
             if (inData[1].isEmpty()) continue;
-            currRanges.unionRanges(inData[1]);
+            currRanges.unionRangeDomains(inData[1]);
         }
         
         const nodePrevRanges = node.getRanges();
@@ -88,28 +89,39 @@ function iterateToFixpoint(graph: CFG, widen: boolean = false) : void {
 // TODO: ALL OTHER CASES
 function updateRanges(node: CFNode) : void {
 
+    // TODO: Count visits and only do this once
+    processIncrements('PRE', node);
+
     // TODO: InterProceduralAnalysis and Function Calls
     if ((node.xml.name === "decl_stmt" && node.xml.get("./xmlns:decl/xmlns:init")) || (node.xml.get("./xmlns:expr/xmlns:operator") 
         && [...node.xml.get("./xmlns:expr/xmlns:operator")!.text].filter((char) => char === '=' ).length === 1)
-        || (node.xml.name === "init")) {
+        || (node.xml.name === "init") || (node.xml.name === "incr")) {
         // TODO: SPLIT BASED ON NODE TYPE
         updateAssignment(node);
-    // } else if (node.xml.name === "incr") {
-
-        // basically update assignment but handle ++ --
-    // } else if (node.xml.name === "condition" && node.xml.contains("parent::switch")) {
+    } else if (node.xml.name === "condition" && node.xml.contains("parent::switch")) {
         // update switch
-    // } else if (node.xml.name === "condition") {
-        // update condition
+        updateSwtich(node)
+    } else if (node.xml.name === "condition") {
+        updateCondtion(node)
+        // TODO: UPDATE CONDITION TO SPECIFY A TRUE AND A FALSE BRANCH
+    } else if (node.xml.name === 'goto') {
+        updateUnsafeNode(node);
     } else {
         updateSafeNode(node);
     }
+    // TODO: unsafeNodes
+        // TODO: update unsafeNode if it contains a side effect
+
+
+    processIncrements('POST', node);
 }
 
-function updateAssignment(node: CFNode) : void {
+function updateAssignment(node: CFNode, expression?: string) : void {
     type AssignmentDirection = "normal" | "nochange" | "kill" | "recurrence" 
         | "invertible";
 
+    // TODO: Handle Increment
+    
     // TODO: Handle multiple assignment (ie multiple to's)
     const to = node.xml.get(".//xmlns:name[not(parent::xmlns:type)]");
     if (!to) return;
@@ -117,9 +129,9 @@ function updateAssignment(node: CFNode) : void {
     let direction: AssignmentDirection;
     if (node.xml.name === "decl_stmt") {
         from = node.xml.get(".//xmlns:init/xmlns:expr")!;
-    } else if (node.xml.name === "expr_stmt" || node.xml.name === "init") {
+    } else if (node.xml.name === "expr_stmt" || node.xml.name === "init" || node.xml.name === 'incr' || node.xml.name === 'expr') {
         // TODO: replace with Xml.Expression.getRHS
-        const expr = node.xml.get("./xmlns:expr");
+        const expr = node.xml.name !== 'expr' ? node.xml.get("./xmlns:expr") : node.xml;
         if (!expr) throw new Error("IMPROPER SRCML");
         let assignOpIndex = expr.childElements.findIndex( (child: Xml.Element) => {
             return [...child.text].filter((char) => char === '=' ).length === 1
@@ -149,6 +161,7 @@ function updateAssignment(node: CFNode) : void {
 
     if (from! === undefined) return;
 
+ 
     // simplify expr
     const simplifiedFrom = ComplexMath.simplifyXml(from)!;
 
@@ -197,13 +210,15 @@ function updateAssignment(node: CFNode) : void {
         if (direction === "kill") {
             outRanges.removeRange(to.text);
         } else {
-            outRanges.setRange(to.text, expandedFrom! ?? simplifiedFrom.text,
-                expandedFrom! ?? simplifiedFrom.text);
+
+            outRanges.setRange(new Range(to.text, expandedFrom! ?? simplifiedFrom.text,
+                expandedFrom! ?? simplifiedFrom.text));
         }
         
     }
 
     for (const successor of node.succs) {
+        // TODO: Refactor
         node.outRanges.set(successor, outRanges);
         successor.inRanges.set(node, outRanges);
     }
@@ -211,11 +226,38 @@ function updateAssignment(node: CFNode) : void {
 }
 
 function updateSwtich(node: CFNode) : void {
+    // TODO: update unsafeNode if it contains a side effect
 
+    // // extract range from each case condtion == case value
+    // for (const caseNode of node.outRanges) {
+    //     if (caseNode[0].xml.name === 'case') {
+            
+    //         extractRanges(`${node.xml.get('xmlns:expr')} == ${caseNode[0].xml.get('xmlns:expr')!.text}`,
+    //             node.xml.get("/xmlns:unit")!.getAttribute("language")!)
+    //     }
+    //     // TODO: Default
+    // }
+
+    // // intersect ranges
+    // for (const caseNode of node.outRanges) {
+    //     const newOutRange = Object.assign({}, node.getRanges()); // TODO: use this instead of .clone/.copy implementations
+    //     newOutRange.intersectRanges(caseNode[1]);
+
+    //     // As a result of the intersect, ranges that don't intersect are removed (ie [2,2] [3,Infinity)])
+    //     // not intersected implies that the value cannot exist and that the path is infeasible
+    //     if (caseNode[1].size > newOutRange.size) {
+    //         caseNode[0].inRanges.delete(caseNode[0])
+    //         node.outRanges.delete(caseNode[0]);
+    //     } else { 
+    //         node.outRanges.set(caseNode[0], newOutRange)
+    //         caseNode[0].outRanges.set(caseNode[0], newOutRange)
+
+    //     }
+    // }
 }
 
 function updateCondtion(node: CFNode) : void {
-
+    // throw new Error("UNIMPLEMENTED")
 }
 
 function updateSafeNode(node: CFNode) : void {
@@ -293,3 +335,32 @@ function isSimpleIdentifier(name: Xml.Element) : boolean {
     assert(name.name === "name");
     return !name.contains("./xmlns:name");
 }
+
+function processIncrements(type: 'PRE' | 'POST', node: CFNode) : void {
+
+    const increments = node.xml.find(`.//xmlns:name[${type === 'PRE' ? 'preceding-sibling' : 'following-sibling'}::*[1]/text() = '++' 
+        or ${type === 'PRE' ? 'preceding-sibling' : 'following-sibling'}::*[1]/text() = '--']`)
+    if (increments.length < 1) return;
+    const originalXML = node.xml.copy();
+    const language = originalXML.get("/xmlns:unit")?.getAttribute("language") ?? ""; // TODO: fix
+
+    for (const incr of increments) {
+        const op = type === 'PRE' ? incr.prevElement!.text : incr.nextElement!.text;
+        const tempXML = createXml(`${incr.text} = ${incr.text} ${op.charAt(0)} 1`, language);
+        if (!tempXML) continue;
+        node.xml.replace(tempXML);
+        node.xml = tempXML;
+        updateAssignment(node);
+    }
+    node.xml.replace(originalXML);
+    node.xml = originalXML;
+
+}
+
+// function extractRanges(expr: string, language: string) : RangeDomain {
+//     const ret = new RangeDomain();
+//     const xml = createXml(expr, language);
+//     if (!xml) return ret;
+//     const ops = xml.find('xmlns:operator');
+//     if (ops.length !== 1) // TODO: Handle more complex situations
+// }

@@ -2,13 +2,14 @@ import * as Xml from '../Facades/Xml/Xml.js'
 import { ControlFlowGraph, ControlFlowNode } from './ControlFlowGraph.js';
 
 let loopJumps: ControlFlowNode[];
-let labelNodes: Map<string, ControlFlowNode>;
+let labelNodes: Map<string, ControlFlowNode>; 
 let gotoJumps: ControlFlowNode[];
 
 export function buildGraph(src: Xml.Element) : ControlFlowGraph {
     loopJumps = [];
     labelNodes = new Map<string, ControlFlowNode>();
     gotoJumps = [];
+    // TODO: Label Jumps
     
     const graph = new ControlFlowGraph();
 
@@ -107,7 +108,7 @@ function buildBlock(block: Xml.Element) : ControlFlowNode {
     return ret ? ret : new ControlFlowNode(blockContent);
 }
 
-function buildUnit(unit: Xml.Element) : ControlFlowNode {
+function buildUnit(unit: Xml.Element) : ControlFlowNode | null {
     const children = unit.childElements;
     let ret: ControlFlowNode | null = null;
 
@@ -133,7 +134,7 @@ function buildUnit(unit: Xml.Element) : ControlFlowNode {
         }
     }
 
-    return ret ? ret : new ControlFlowNode(unit);
+    return ret ;
 }
 
 // the chosen approach may mess up the tails on the internal conds, but

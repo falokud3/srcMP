@@ -25,14 +25,27 @@ export const FALSE = 0;
  * @param expression
  */
 // TODO: CHANGE TO return string | number
-export function simplify(expression: string) {
+export function simplify(expression: string)  {
     algebrite.clearall();
     return algebrite.simplify(expression).toString();
 }
 
-// TODO: HANDLE -1
+export function safeSimplify(expression: string) {
+    expression = expression.replace(/([\w\*\&\[\]\.\(\)]+)\s*\+\+/gm, '$1')
+    expression = expression.replace(/\+\+\s*([\w\*\&\[\]\.\(\)]+)/gm, '$1')
+    expression = expression.replace(/([\w\*\&\[\]\.\(\)]+)\s*--/gm, '$1')
+    expression = expression.replace(/--\s*([\w\*\&\[\]\.\(\)]+)/gm, '$1')
+
+    // TODO: convert . expressions to variables
+    // TODO: deconvert variables to expressions
+
+    return simplify(expression);
+
+}
+
+// TODO: REMOVE split into simply and  create XML
 export function simplifyXml(expression: Xml.Element) : Xml.Element | null {
-    let newExpression = simplify(expression.text);
+    let newExpression = safeSimplify(expression.text);
     if (newExpression === "nil") return expression;
 
     // srcml currently has a bug that causes errors when parsing text leading with "-"
@@ -80,4 +93,22 @@ export function getVariables(expression: string) : Set<string> {
     const regex = /[a-zA-Z_][a-zA-Z0-9_]*/g
     const matches = regex.exec(expression);
     return matches ? new Set<string>(matches) : new Set<string>();
+}
+
+export type Inequaliy = '<' | '>' | '<=' | '>=' | '=';
+
+// undefined represetns != AND scenarios where the inequality cannot be determined do to symbolic
+    // values
+export function compare(lhs: string, rhs: string) : Inequaliy | undefined {
+    let ret: Inequaliy | undefined = undefined;
+    if (Number(simplify(`${lhs} < ${rhs}`)) === TRUE) ret = '<';
+    else if (Number(simplify(`${lhs} > ${rhs}`)) === TRUE) ret = '>';
+
+    if (Number(simplify(`${lhs} == ${rhs}`)) === TRUE) {
+        if (ret === undefined) ret = '=';
+        else if (ret === '<') ret = '<=';
+        else if (ret === '>') ret = '>=';
+    }
+
+    return ret;
 }

@@ -232,7 +232,7 @@ export default class XmlElement {
             attributes.push(`@${attr.name} = '${attr.value}'`)
         }
         //@ts-expect-error
-        const matches = (new XmlElement(cloneDoc['documentElement'])).find(`//${this.domNode.prefix ?? 'xmlns'}:${this.name}[${attributes.join(' and ')}]`)
+        const matches = (new XmlElement(cloneDoc['documentElement'])).find(`//${this.domNode.prefix ?? 'xmlns'}:${this.name}${attributes.length > 0 ? `[${attributes.join(' and ')}]` : ''}`)
 
         const copy = matches.find((element) => this.equals(element));
 
@@ -243,14 +243,14 @@ export default class XmlElement {
 
     public replace(newNode: XmlElement) : XmlElement {
 
-        // TODO: Inplace replacement or generate a copy
-
         const domParent = this.parentElement?.domNode;
 
-        // TODO: CHANGE
-        if (!domParent) throw new Error("OH BROTHER THIS GUY STINKS");
+        if (!domParent) throw new Error("Cannot replace a node that doesn't have a parent element");
 
         domParent.replaceChild(newNode.domNode, this.domNode);
+        //@ts-expect-error - fixes bug where replaceChild doesn't change readonly property
+        // ownerDocument for the replacing node
+        newNode.domNode.ownerDocument = this.domNode.ownerDocument;
 
         return newNode;
         // // no return

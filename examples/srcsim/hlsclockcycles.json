@@ -1,0 +1,24 @@
+
+{
+    "name": "HLS-FPGA",
+    "clockFrequency": 50,
+    "affectedByDivergence": false,
+    "ops": {
+        "add": {
+            "min": 1,
+            "max": 13
+        },
+        "mul": {
+            "min": 1,
+            "max": 14
+        },
+        "div": {
+            "min": 1,
+            "max": 58
+        },
+        "default": {
+            "min": 6,
+            "max": 6
+        }
+    }
+}

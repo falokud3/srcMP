@@ -1,0 +1,36 @@
+
+{
+    "name": "NVIDIA TITAN RTX",
+    "clockFrequency": 1350,
+    "affectedByDivergence": true,
+    "ops": {
+        "add": {
+            "min": 4,
+            "max": 40
+        },
+        "mul": {
+            "min": 4,
+            "max": 40
+        },
+        "div": {
+            "min": 117,
+            "max": 540
+        },
+        "max": {
+            "min": 4,
+            "max": 40
+        },
+        "lop": {
+            "min": 4,
+            "max": 4
+        },
+        "mov": {
+            "min": 6,
+            "max": 6
+        },
+        "default": {
+            "min": 6,
+            "max": 6
+        }
+    }
+}

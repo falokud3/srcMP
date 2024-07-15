@@ -6,16 +6,16 @@ import { Command } from 'commander'
 import { execSync } from 'child_process';
 import * as PLD from '../ParallelizableLoopDetection/ParallelizableLoopDetectionPass.js';
 import { Verbosity, setVerbosity } from '../Facades/CommandLineOutput.js';
-
-
-// TODO include --position and use that instead of line and col
+import { getRanges } from '../DataDependenceTesting/RangeAnalysis.js';
 
 function runCompiler(program: Xml.Element) {
     Xml.setNamespaces(program);
 
     setVerbosity(Verbosity.Simple);
-    const programDDG = DDT.run(program);
-    PLD.run(program, programDDG);  
+    // const programDDG = DDT.run(program);
+    // PLD.run(program, programDDG);  
+    
+    getRanges(program.find('.//xmlns:function')[0]);
 }
 
 /**
@@ -30,7 +30,7 @@ function getFileXml(srcPath: string) : Xml.Element {
     const fileExtension = srcPath.substring(srcPath.lastIndexOf("."))
     
     if (fileExtension !== ".xml") {
-        const buffer = execSync(`srcml ${srcPath}`, {timeout: 10000});
+        const buffer = execSync(`srcml --position ${srcPath}`, {timeout: 10000});
         return Xml.parseXmlString(buffer.toString());
     } else {
         return Xml.parseXmlFile(srcPath);
