@@ -224,12 +224,23 @@ function estimateClockCycles(xml: Xml.Element, device: Device) : [number, number
     return [min, max, (min + max) / 2];
 }
 
-function outputEstimates(xml: Xml.Element, language: string, devices: Device[]) {
+function getKernelFunctions(program: Xml.Element, language: ParallelProgrammingInfo.SupportedLanguages) : Xml.Element[] {
+    if (language === 'cu' || language === 'hip') {
+        return program.find(`.//xmlns:function[xmlns:type/xmlns:name[text()='__global__']]`);
+    } else if (language === 'cl') {
+        return program.find(`.//xmlns:function[xmlns:type/xmlns:name[text()='__kernel']]`);
+    } else {
+        console.error(chalk.yellow(`Kernel function syntax for file extension "${language}" not found. Defaulting to cuda's kernel function syntax.`));
+        return program.find(`.//xmlns:function[xmlns:type/xmlns:name[text()='__global__']]`);
+    }
+}
+
+function outputEstimates(xml: Xml.Element, language: ParallelProgrammingInfo.SupportedLanguages, devices: Device[]) {
     // ? Nested Functions
-    // TODO: make language adaptable
     builtInVariables = ParallelProgrammingInfo.cudaBuiltIns;
     Xml.setNamespaces(xml);
-    const kernelFunctions = xml.find(`.//xmlns:function[xmlns:type/xmlns:name[text()='__global__']]`);
+
+    const kernelFunctions = getKernelFunctions(xml, language);
 
     for (const func of kernelFunctions) {
         console.log(`${func.get('./xmlns:name')?.text ?? 'FunctionNameNotFound'} (line ${func.line} col ${func.col}):`);
@@ -273,7 +284,7 @@ function setBuiltInVariables(filePath: string) : ParallelProgrammingInfo.Support
         builtInVariables = ParallelProgrammingInfo.openclBuiltIns;
         return 'cl'
     } else {
-        console.error(`Built in variables for file extension "${extension}" not found. Defaulting to cuda's variables.`);
+        console.error(chalk.yellow(`Built in variables for file extension "${extension}" not found. Defaulting to cuda's variables.`));
         builtInVariables = ParallelProgrammingInfo.cudaBuiltIns;
         return 'cu'
     }
