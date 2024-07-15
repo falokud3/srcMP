@@ -340,7 +340,7 @@ function main() : number {
         .requiredOption('-d, --devices <device-files...>', 'The files that describe the characteristics of the devices in JSON for estimation.' )
         .option('-v, --verbose', 'Displays the results of internal steps used to calculate estimation.', false);
 
-    program.addHelpText('before', 'NOTE: This programs assumes that device clock frequency provided is in megahertz (MHz)')
+    program.addHelpText('before', `${chalk.red('NOTE:')} This programs assumes that device clock frequency provided is in megahertz (MHz)`)
 
     program.parse();
 
