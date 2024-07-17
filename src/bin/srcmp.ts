@@ -11,11 +11,11 @@ import { getRanges } from '../DataDependenceTesting/RangeAnalysis.js';
 function runCompiler(program: Xml.Element) {
     Xml.setNamespaces(program);
 
-    setVerbosity(Verbosity.Simple);
-    // const programDDG = DDT.run(program);
-    // PLD.run(program, programDDG);  
+    setVerbosity(Verbosity.Internal);
+    const programDDG = DDT.run(program);
+    PLD.run(program, programDDG);  //
+    console.log(program.text);
     
-    getRanges(program.find('.//xmlns:function')[0]);
 }
 
 /**

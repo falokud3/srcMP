@@ -96,8 +96,8 @@ function hasCanonicalCondition(loop: Xml.ForLoop, indexVariable: Xml.Element): b
    });
    if (operators.length != 1) return false;
 
-   return (operators[0].prevElement?.equals(indexVariable)
-      || operators[0].nextElement?.equals(indexVariable)) ?? false;
+   return Boolean(operators[0].prevElement?.text === indexVariable.text
+      || operators[0].nextElement?.text === indexVariable.text);
 }
 /**
  * Returns true if there is one and only one expression with the indexVariable
@@ -110,20 +110,21 @@ function hasCanonicalIncrement(loop: Xml.ForLoop, indexVariable: Xml.Element): b
 
    const expr = loop.increment.child(0)!;
    if (expr.contains("./xmlns:operator[text()='++' or text()='--']")
-      && indexVariable.equals(expr.get("./xmlns:name")!)
+      && indexVariable.text === expr.get("./xmlns:name")?.text
       && expr.childElements.length === 2) {
          return true;
    } else if (expr.contains("./xmlns:operator[text()='=']")) {
-      if (expr.childElements.length !== 5 || !indexVariable.equals(expr.child(0)!)) return false;
+      if (expr.childElements.length !== 5 || indexVariable.text !== expr.child(0)?.text) return false;
 
       if (expr.child(3)?.text === "+") {
-         return indexVariable.equals(expr.child(2)!) || indexVariable.equals(expr.child(4)!);
+         return indexVariable.text === expr.child(2)?.text 
+            || indexVariable.text === expr.child(4)?.text;
       } else if (expr.child(3)?.text === "-") {
-         return indexVariable.equals(expr.child(2)!);
+         return indexVariable.text === expr.child(2)?.text;
       }
    } else if (expr.contains("./xmlns:operator[text()='+=' or text()='-=']")) {
       return expr.childElements.length === 3
-         && indexVariable.equals(expr.child(0)!);
+         && indexVariable.text === expr.child(0)?.text;
    }
 
    return false;

@@ -35,8 +35,8 @@ int main(int argc){
   step = 6;
   
 
-  for (i = 0; i < 2 ; i++) {
-      a[i] = a[i + 1];
+  for (i = 0; i < 2; i++) {
+      a[i] = a[i] * 5;
   }
   
    return 0;

@@ -5,6 +5,7 @@ import { Direction } from "../DataDependenceTesting/DependenceVector.js";
 import { extractOutermostDependenceTestEligibleLoops } from "../DataDependenceTesting/Eligibility.js";
 import { collectScalarDependencies } from "../DataDependenceTesting/ScalarDependenceTest.js";
 import * as Xml from '../Facades/Xml/Xml.js'
+import { createXml } from "../Facades/srcml.js";
 
 
 export function run(program: Xml.Element, programDDG: DataDependenceGraph) {
@@ -13,8 +14,18 @@ export function run(program: Xml.Element, programDDG: DataDependenceGraph) {
     for (const outerLoop of outerLoops) {
         messages.push(...parallelizeLoopNest(outerLoop, programDDG));
     }
-
     output(...messages);    
+    insertPragmas(messages);
+
+}
+
+function insertPragmas(analyzedLoops: ParallelizableStatus[]) : void {
+    const parallelizedLoops = analyzedLoops.filter((loopStatus) => loopStatus.isParallelizable && !loopStatus.parallelizableOuterLoop);
+    const pragmaXML = createXml('#pragma omp parallel for', 'C++')!;
+    for (const loopStatus of parallelizedLoops) {
+        loopStatus.loop.insertBefore(pragmaXML.copy());
+        loopStatus.loop.insertBefore( loopStatus.loop.domNode.ownerDocument.createTextNode('\n'));
+   }
 }
 
 function parallelizeLoopNest(outerLoop: Xml.ForLoop, ddg: DataDependenceGraph) : ParallelizableStatus[] {

@@ -197,6 +197,23 @@ export default class XmlElement {
         this.domNode.setAttribute(name, value);
     }
 
+    insertBefore(node: XmlElement | Node) : void {
+        const domParent = this.parentElement?.domNode;
+
+        if (!domParent) throw new Error("Cannot replace a node that doesn't have a parent element");
+
+        domParent.insertBefore(node instanceof XmlElement ? node.domNode : node, this.domNode);
+        if (node instanceof XmlElement) {
+            //@ts-expect-error - fixes bug where replaceChild doesn't change readonly property
+            // ownerDocument for the replacing node
+            node.domNode.ownerDocument = this.domNode.ownerDocument;
+        } else {
+            //@ts-expect-error - fixes bug where replaceChild doesn't change readonly property
+            // ownerDocument for the replacing node
+            node.ownerDocument = this.domNode.ownerDocument;
+        }
+    }
+
     /**
      * Returns the function that directly enclosing the calling element. If the
      * object is not nested within a function, it returns the root element of 
@@ -232,7 +249,7 @@ export default class XmlElement {
             attributes.push(`@${attr.name} = '${attr.value}'`)
         }
         //@ts-expect-error
-        const matches = (new XmlElement(cloneDoc['documentElement'])).find(`//${this.domNode.prefix ?? 'xmlns'}:${this.name}${attributes.length > 0 ? `[${attributes.join(' and ')}]` : ''}`)
+        const matches = (new XmlElement(cloneDoc['documentElement'])).find(`//${this.name.includes(':') ? this.name : 'xmlns:' + this.name}${attributes.length > 0 ? `[${attributes.join(' and ')}]` : ''}`)
 
         const copy = matches.find((element) => this.equals(element));
 
@@ -311,7 +328,6 @@ export default class XmlElement {
     }
 
 }
-
 
 function variableIsDefined(name: Xml.Element) : boolean {
     const nextOp = name.nextElement;
