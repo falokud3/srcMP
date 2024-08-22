@@ -1,0 +1,32 @@
+
+{
+    "name": "New - Intel Core i7",
+    "clockFrequency": 2600,
+    "affectedByDivergence": false,
+    "ops": {
+        "add": {
+            "min": 1,
+            "max": 7
+        },
+        "mul": {
+            "min": 3,
+            "max": 27
+        },
+        "div": {
+            "min": 11,
+            "max": 100
+        },
+        "lop": {
+            "min": 1,
+            "max": 6
+        },
+        "mov": {
+            "min": 1,
+            "max": 3
+        },
+        "default": {
+            "min": 6,
+            "max": 6
+        }
+    }
+}

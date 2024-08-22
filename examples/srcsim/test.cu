@@ -17,9 +17,9 @@ __global__ void modifiedDiffusionCoeffKernel(float *array, int size) {
     if (c < 0) {
         array[idx] = 0;
     } else if (c > 1) {
-        array[idx] = 1;
+        array[modifiedDiffusionCoeffKernel(idx)] = 1;
     } else {
-        array[idx] = c;
+        array[idx / 5] = c;
     }
     
 }

@@ -14,9 +14,17 @@ export function run(program: Xml.Element, programDDG: DataDependenceGraph) {
     for (const outerLoop of outerLoops) {
         messages.push(...parallelizeLoopNest(outerLoop, programDDG));
     }
+    removeExistingPragmas(program)
     output(...messages);    
     insertPragmas(messages);
 
+}
+
+function removeExistingPragmas(program: Xml.Element) : void {
+    const ompPragmas = program.find('//cpp:pragma[./omp:directive]');
+    for (const ompPragma of ompPragmas) {
+        ompPragma.remove();
+    }
 }
 
 function insertPragmas(analyzedLoops: ParallelizableStatus[]) : void {

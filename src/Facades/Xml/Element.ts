@@ -197,6 +197,14 @@ export default class XmlElement {
         this.domNode.setAttribute(name, value);
     }
 
+    remove() : void {
+        const domParent = this.parentElement?.domNode;
+
+        if (!domParent) throw new Error("Cannot remove a node that doesn't have a parent element");
+
+        domParent.removeChild(this.domNode)
+    }
+
     insertBefore(node: XmlElement | Node) : void {
         const domParent = this.parentElement?.domNode;
 

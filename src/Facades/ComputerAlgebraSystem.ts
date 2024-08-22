@@ -27,7 +27,12 @@ export const FALSE = 0;
 // TODO: CHANGE TO return string | number
 export function simplify(expression: string)  {
     algebrite.clearall();
-    return algebrite.simplify(expression).toString();
+    try {
+        return algebrite.simplify(expression).toString();
+    } catch (Error) {
+        console.log(Error);
+        return expression;
+    }
 }
 
 export function safeSimplify(expression: string) {

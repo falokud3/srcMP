@@ -34,13 +34,13 @@ function formatOP(op: string) : string {
         case '+=':
         case '-':
         case '-=':
-            return 'ADD';
+            return 'add';
         case '*':
         case '*=':
-            return 'MUL';
+            return 'mul';
         case '/':
         case '/=':
-            return 'DIV'
+            return 'div'
         case '<':
         case '<=':
         case '>':
@@ -49,19 +49,19 @@ function formatOP(op: string) : string {
         case '!=':
         case '==':
         case '||':
-            return 'LOP'
+            return 'lop'
         default:
             return op;
     }
 }
 
+// coalesced memory access are either not based on index variables 
+// if they are based on index variables, then must be linear combination
 function isCoalesced(access: Xml.Element) : boolean {
     const expr = access.get('xmlns:index/xmlns:expr');
     // only testing array access that based on thread true
     if (!expr || !divergenceTest(expr)) return true; 
-
-    return Boolean(!expr.get('.//xmlns:operator[. != "+" and . != "-"]') 
-        && !expr.get('.//xmlns:call'));
+    return !Boolean(expr.get('.//xmlns:operator[. != "+" and . != "-"]'));
     
 }
 
@@ -196,7 +196,7 @@ function estimateClockCycles(xml: Xml.Element, device: Device) : [number, number
         min += device.ops['MOV']?.min ?? device.ops.default.min;
         max += device.ops['MOV']?.max ?? device.ops.default.max;
         if (!isCoalesced(read)) {
-            if (verbose) console.log(read.text, chalk.red("Uncoalesced Acess"))
+            if (verbose) console.log(read.text, chalk.red("Uncoalesced Access"))
             min += device.ops['MOV']?.min ?? device.ops.default.min;
             max += device.ops['MOV']?.max ?? device.ops.default.max;
         }
@@ -220,8 +220,11 @@ function estimateClockCycles(xml: Xml.Element, device: Device) : [number, number
         }
     }
 
+    // ! COMPILER OPTIMIZATION ADJUSTMENT FACTOR
+    min /= 2;
+    max /= 2;
 
-    return [min, max, (min + max) / 2];
+    return  [Math.floor(min), Math.floor(max), Math.floor((2 * min * max) / (min + max))];
 }
 
 function getKernelFunctions(program: Xml.Element, language: ParallelProgrammingInfo.SupportedLanguages) : Xml.Element[] {
@@ -246,9 +249,9 @@ function outputEstimates(xml: Xml.Element, language: ParallelProgrammingInfo.Sup
         console.log(`${func.get('./xmlns:name')?.text ?? 'FunctionNameNotFound'} (line ${func.line} col ${func.col}):`);
         for (const device of devices) {
             const clockCycles = estimateClockCycles(func, device);
-            const time = clockCycles.map((cycles) => (cycles / device.clockFrequency / 1000).toPrecision(3));
+            const time = clockCycles.map((cycles) => (cycles / device.clockFrequency / 1000000).toPrecision(5));
             console.log(`  ${device.name} Clock Cycles Estimate Min: ${chalk.yellow(clockCycles[0])} Max: ${chalk.yellow(clockCycles[1])} Avg: ${chalk.yellow(clockCycles[2])}`);
-            console.log(`  ${device.name} Time Estimate Min: ${chalk.yellow(time[0])}ms Max: ${chalk.yellow(time[1])}ms Avg: ${chalk.yellow(time[2])}ms`);
+            console.log(`  ${device.name} Time Estimate Min: ${chalk.yellow(time[0])}s Max: ${chalk.yellow(time[1])}s Avg: ${chalk.yellow(time[2])}s`);
             console.log()
         }
     }

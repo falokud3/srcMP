@@ -1,0 +1,32 @@
+
+{
+    "name": "Intel Core i7",
+    "clockFrequency": 2600,
+    "affectedByDivergence": false,
+    "ops": {
+        "add": {
+            "min": 3,
+            "max": 17
+        },
+        "mul": {
+            "min": 6,
+            "max": 12
+        },
+        "div": {
+            "min": 39,
+            "max": 152
+        },
+        "lop": {
+            "min": 3,
+            "max": 12
+        },
+        "mov": {
+            "min": 3,
+            "max": 12
+        },
+        "default": {
+            "min": 6,
+            "max": 6
+        }
+    }
+}

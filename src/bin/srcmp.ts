@@ -7,15 +7,24 @@ import { execSync } from 'child_process';
 import * as PLD from '../ParallelizableLoopDetection/ParallelizableLoopDetectionPass.js';
 import { Verbosity, setVerbosity } from '../Facades/CommandLineOutput.js';
 import { getRanges } from '../DataDependenceTesting/RangeAnalysis.js';
+import { writeFile } from 'fs';
 
-function runCompiler(program: Xml.Element) {
+function runCompiler(program: Xml.Element) : Xml.Element {
     Xml.setNamespaces(program);
 
-    setVerbosity(Verbosity.Internal);
+    setVerbosity(Verbosity.Silent);
     const programDDG = DDT.run(program);
     PLD.run(program, programDDG);  //
-    console.log(program.text);
-    
+    // TODO: OUTPUT srcml option
+    return program;
+}
+
+function outputFile(content: Xml.Element, inputFilePath: string) {
+    let index = Math.max(inputFilePath.lastIndexOf('/'), 0);
+    const filePath = `${inputFilePath.substring(0, index + 1)}srcmp_${inputFilePath.substring(index + 1)}`;
+
+    writeFile(filePath, content.text, (err) => {if (err) console.error("ERROR")}); // TODO: ERROR
+
 }
 
 /**
@@ -30,7 +39,7 @@ function getFileXml(srcPath: string) : Xml.Element {
     const fileExtension = srcPath.substring(srcPath.lastIndexOf("."))
     
     if (fileExtension !== ".xml") {
-        const buffer = execSync(`srcml --position ${srcPath}`, {timeout: 10000});
+        const buffer = execSync(`srcml --position ${srcPath}`, {timeout: 10000, maxBuffer: 1024 * 1024 * 10});
         return Xml.parseXmlString(buffer.toString());
     } else {
         return Xml.parseXmlFile(srcPath);
@@ -49,14 +58,14 @@ function main() : number {
         .version('0.0.1')
         .argument('<input-files...>', 'The files to be compiled');
 
-    program.parse();    
+    program.parse();
+    program.args    
 
-    for (const inputFile of program.args) {
+    for (const inputFile of program.args[0].split(' ').filter((arg) => arg.length > 0)) {
         // try {
-            runCompiler(getFileXml(inputFile));
+            outputFile(runCompiler(getFileXml(inputFile)), inputFile);
         // } catch (error) {
             // console.error(inputFile + ": " + error.message + "(" + error.name + ")");
-            return 1;
         // }
     }
 

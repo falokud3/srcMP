@@ -15,8 +15,9 @@ int main(int argc){
   step++;
   // step, i += 3;
   
-#pragma omp parallel for
-  for (i = 0; i < 2; i++) {
+
+  #pragma omp parallel for
+for (i = 0; i < 2; i++) {
       a[i] = a[i] * 5;
   }
   

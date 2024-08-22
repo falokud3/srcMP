@@ -1,0 +1,32 @@
+
+{
+    "name": "Intel Xeon Phi",
+    "clockFrequency": 2600,
+    "affectedByDivergence": false,
+    "ops": {
+        "add": {
+            "min": 2,
+            "max": 8
+        },
+        "mul": {
+            "min": 4,
+            "max": 12
+        },
+        "div": {
+            "min": 39,
+            "max": 152
+        },
+        "lop": {
+            "min": 2,
+            "max": 7
+        },
+        "mov": {
+            "min": 2,
+            "max": 10
+        },
+        "default": {
+            "min": 6,
+            "max": 6
+        }
+    }
+}
