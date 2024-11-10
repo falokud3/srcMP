@@ -2,24 +2,52 @@
   "name": "srccetus",
   "version": "1.0.0",
   "description": "Implementation of the cetus compiler based on the srcML IR",
-  "main": "index.js",
+  "license": "GPL-3.0-only",
+  "type": "module",
+  "engines": {
+    "vscode": "^1.95.0"
+  },
   "directories": {
     "test": "tests"
-  },
-  "scripts": {
-    "fastbuild": "sucrase ./src -d ./build --transforms typescript --quiet"
   },
   "bin": {
     "srcmp": "./build/bin/srcmp.js",
     "srcsim": "./build/bin/srcsim.js"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "contributes": {
+    "commands": [
+      {
+        "command": "tesst.helloWorld",
+        "title": "Hello World"
+      }
+    ]
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run package",
+    "compile": "npm run check-types && npm run lint && node esbuild.js",
+    "watch": "npm-run-all -p watch:*",
+    "watch:esbuild": "node esbuild.js --watch",
+    "watch:tsc": "npx tsc --noEmit --watch --project tsconfig.json",
+    "package": "npm run check-types && npm run lint && node esbuild.js --production",
+    "compile-tests": "npx tsc -p . --outDir tests/out",
+    "watch-tests": "npx tsc -p . -w --outDir tests/out",
+    "pretest": "npm run compile-tests && npm run compile && npm run lint",
+    "check-types": "npx tsc --noEmit",
+    "lint": "eslint src",
+    "test": "vscode-test"
+  },
   "devDependencies": {
+    "@types/mocha": "^10.0.9",
     "@types/node": "^20.8.6",
-    "sucrase": "^3.35.0",
-    "typescript": "^5.4.5"
+    "@types/vscode": "^1.95.0",
+    "@typescript-eslint/eslint-plugin": "^8.10.0",
+    "@typescript-eslint/parser": "^8.7.0",
+    "@vscode/test-cli": "^0.0.10",
+    "@vscode/test-electron": "^2.4.1",
+    "esbuild": "^0.24.0",
+    "eslint": "^9.14.0",
+    "npm-run-all": "^4.1.5",
+    "typescript": "^5.6.3"
   },
   "dependencies": {
     "@xmldom/xmldom": "^0.8.10",
@@ -28,6 +56,5 @@
     "commander": "^12.1.0",
     "wrap-ansi": "^9.0.0",
     "xpath": "^0.0.34"
-  },
-  "type": "module"
+  }
 }

@@ -15,6 +15,7 @@
     "noFallthroughCasesInSwitch": true,
     "noImplicitOverride": true,
     "noImplicitReturns": true,
+    "noUnusedParameters": true,
 
     "outDir": "build",
 
@@ -24,6 +25,6 @@
 
     "target": "ES6",
   },
-  "include": ["src",],
+  "include": ["src", "tests/ext/extension.test.ts", "eval/analyze_results.ts",],
   "exclude": ["node_modules"],
 }

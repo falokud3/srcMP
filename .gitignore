@@ -1,6 +1,7 @@
 node_modules/
 build/
-benchmarks/PolyBenchC-4.2.1/
+eval/benchmarks
 .DS_Store
 .vscode
 benchmarks/NPB2.3-omp-C
+tests/out
