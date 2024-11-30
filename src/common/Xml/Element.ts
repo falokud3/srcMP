@@ -43,7 +43,7 @@ export default class XmlElement {
     public get col(): number {
         //@ts-expect-error lineNumber is unique to @xmldom/xmldom's DOM implementation and not in 
             // general DOM type definition
-        return this.domNode['columnNumber'];
+        return Number(this.domNode['columnNumber']);
     }
 
     /**
@@ -259,7 +259,7 @@ export default class XmlElement {
             attributes.push(`@${attr.name} = '${attr.value}'`);
         }
         //@ts-expect-error limitiation of xmldoc
-        const matches = (new XmlElement(cloneDoc['documentElement'])).find(`//${this.name.includes(':') ? this.name : 'xmlns:' + this.name}${attributes.length > 0 ? `[${attributes.join(' and ')}]` : ''}`);
+        const matches = (new XmlElement(cloneDoc['documentElement'] as Element)).find(`//${this.name.includes(':') ? this.name : 'xmlns:' + this.name}${attributes.length > 0 ? `[${attributes.join(' and ')}]` : ''}`);
 
         const copy = matches.find((element) => this.equals(element));
 

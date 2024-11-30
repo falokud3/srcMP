@@ -26,7 +26,7 @@ let fileNameSapce: Record<string, string> = {'': 'http://www.srcML.org/srcML/src
 export function setNamespaces(unit: XmlElement) {
     assert(unit.name === 'unit');
     //@ts-expect-error _nsMap is unique to @xmldom/xmldom's DOM implementation and not in the general DOM type definition
-    const newNS: Record<string, string> = unit.domNode['_nsMap'];
+    const newNS: Record<string, string> = unit.domNode['_nsMap'] as Record<string, string>;
     newNS['xmlns'] = newNS[''];
     fileNameSapce = newNS;
 }
