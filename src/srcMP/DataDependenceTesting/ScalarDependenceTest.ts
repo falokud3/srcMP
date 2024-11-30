@@ -1,4 +1,4 @@
-import * as Xml from '../../common/Xml/Xml.js'
+import * as Xml from '../../common/Xml/Xml.js';
 
 export function collectScalarDependencies(loop: Xml.ForLoop) : Set<Xml.Element> {
     const ret = new Set<Xml.Element>(); // TODO: REMOVE USE OF ALL SETS

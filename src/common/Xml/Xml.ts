@@ -14,19 +14,18 @@ import { assert } from 'console';
 import { DOMParser } from '@xmldom/xmldom';
 import { execSync } from 'child_process';
 
-export {XmlElement as Element}
-export * from './Element.js'
-export * from './ForLoop.js'
-export * from './Expression.js'
+export {XmlElement as Element};
+export * from './Element.js';
+export * from './ForLoop.js';
+export * from './Expression.js';
 
 // namespace
 let fileNameSapce: Record<string, string> = {'': 'http://www.srcML.org/srcML/src'};
 
 
 export function setNamespaces(unit: XmlElement) {
-    assert(unit.name === 'unit')
-    //@ts-expect-error _nsMap is unique to @xmldom/xmldom's DOM implementation and not in 
-        // general DOM type definition 
+    assert(unit.name === 'unit');
+    //@ts-expect-error _nsMap is unique to @xmldom/xmldom's DOM implementation and not in the general DOM type definition
     const newNS: Record<string, string> = unit.domNode['_nsMap'];
     newNS['xmlns'] = newNS[''];
     fileNameSapce = newNS;

@@ -1,9 +1,9 @@
 import { assert } from 'console';
-import * as Xml from '../../common/Xml/Xml.js'
+import * as Xml from '../../common/Xml/Xml.js';
 import { RangeDomain, Range } from './RangeDomain.js';
 import { ControlFlowGraph as CFG, ControlFlowNode as CFNode } from './ControlFlowGraph.js';
 import { execSync } from 'child_process';
-import * as ComplexMath from '../../common/ComputerAlgebraSystem.js'
+import * as ComplexMath from '../../common/ComputerAlgebraSystem.js';
 import { createXml } from '../../common/srcml.js';
 
 // NOTE: Using Xml.Element.toString() as the key, because using the object
@@ -19,7 +19,7 @@ export function getRanges(root: Xml.Element) : Map<string, RangeDomain> {
 
     cfg.topologicalSort();
     iterateToFixpoint(cfg, true);
-    console.log(cfg.toString())
+    console.log(cfg.toString());
     // iterateToFixpoint(cfg, false);
 
     // TODO: FILTER UNSAFE RANGES
@@ -63,14 +63,14 @@ function iterateToFixpoint(graph: CFG, widen: boolean = false) : void {
         const nodePrevRanges = node.getRanges();
         if (!nodePrevRanges.isEmpty() && node.hasBackedge()) {
             if (widen) {
-                const widener = node.loopVariants!
+                const widener = node.loopVariants!;
                 if (widener.size > 0) {
                     currRanges.widenAffectedRanges(nodePrevRanges, widener);
                 } else {
                     currRanges.widenAffectedRanges(nodePrevRanges);
                 }
             } else {
-                currRanges.narrowRanges(nodePrevRanges)
+                currRanges.narrowRanges(nodePrevRanges);
             }
         }
 
@@ -101,9 +101,9 @@ function updateRanges(node: CFNode) : void {
         updateAssignment(node);
     } else if (node.xml.name === "condition" && node.xml.contains("parent::switch")) {
         // update switch
-        updateSwtich(node)
+        updateSwtich(node);
     } else if (node.xml.name === "condition") {
-        updateCondtion(node)
+        updateCondtion(node);
         // TODO: UPDATE CONDITION TO SPECIFY A TRUE AND A FALSE BRANCH
     } else if (node.xml.name === 'goto') {
         updateUnsafeNode(node);
@@ -134,8 +134,8 @@ function updateAssignment(node: CFNode, expression?: string) : void {
         // TODO: replace with Xml.Expression.getRHS
         const expr = node.xml.name !== 'expr' ? node.xml.get(".//xmlns:expr") : node.xml;
         if (!expr) throw new Error("IMPROPER SRCML");
-        let assignOpIndex = expr.childElements.findIndex( (child: Xml.Element) => {
-            return [...child.text].filter((char) => char === '=' ).length === 1
+        const assignOpIndex = expr.childElements.findIndex( (child: Xml.Element) => {
+            return [...child.text].filter((char) => char === '=' ).length === 1;
         });
         let rhsString: string = "";
         for (let i = assignOpIndex + 1; i < expr.childElements.length; i++) {
@@ -149,10 +149,10 @@ function updateAssignment(node: CFNode, expression?: string) : void {
 
         const rhsRoot = Xml.parseXmlString(buffer.toString());
 
-        from = expr.copy()
+        from = expr.copy();
         const kiddos = Array.from(from.domNode.childNodes);
         const aopi = kiddos.findIndex((node) => {
-            return [...(node.textContent ?? "")].filter((char) => char === '=' ).length === 1
+            return [...(node.textContent ?? "")].filter((char) => char === '=' ).length === 1;
         });
         for (let i = 0; i <= aopi; i++) {
             from.domNode.removeChild(kiddos[i]);
@@ -179,12 +179,12 @@ function updateAssignment(node: CFNode, expression?: string) : void {
     } else {
          inverted = ComplexMath.invertExpression(to, simplifiedFrom);
         if (!inverted) {
-            direction = "recurrence"
+            direction = "recurrence";
         // } else if (inverted.contains(".//xmlns:name/xmlns:index")) {
         } else if (inverted.text.includes("[")) {
-            direction = "kill"
+            direction = "kill";
         } else {
-            direction = "invertible"
+            direction = "invertible";
         }
     }
 
@@ -264,7 +264,7 @@ function updateCondtion(node: CFNode) : void {
 function updateSafeNode(node: CFNode) : void {
     // ? What about node's outRanges
     for (const successor of node.succs) {
-        node.outRanges.set(successor, node.getRanges())
+        node.outRanges.set(successor, node.getRanges());
         successor.inRanges.set(node, node.getRanges());
     }
 }
@@ -272,13 +272,13 @@ function updateSafeNode(node: CFNode) : void {
 function updateUnsafeNode(node: CFNode) : void {
     // ? What about node's outRanges
     for (const successor of node.succs) {
-        node.outRanges.set(successor, node.getRanges())
+        node.outRanges.set(successor, node.getRanges());
         successor.inRanges.set(node, new RangeDomain());
     }
 }
 
 function isTractableType(variable: Xml.Element) : boolean {
-    assert(variable.name === "name")
+    assert(variable.name === "name");
     // find the variable's declaration
     // ! this won't work for python esque languages
 
@@ -340,7 +340,7 @@ function isSimpleIdentifier(name: Xml.Element) : boolean {
 function processIncrements(type: 'PRE' | 'POST', node: CFNode) : void {
 
     const increments = node.xml.find(`.//xmlns:name[${type === 'PRE' ? 'preceding-sibling' : 'following-sibling'}::*[1]/text() = '++' 
-        or ${type === 'PRE' ? 'preceding-sibling' : 'following-sibling'}::*[1]/text() = '--']`)
+        or ${type === 'PRE' ? 'preceding-sibling' : 'following-sibling'}::*[1]/text() = '--']`);
     if (increments.length < 1) return;
     const originalXML = node.xml.copy();
     const language = originalXML.get("/xmlns:unit")?.getAttribute("language") ?? ""; // TODO: fix

@@ -1,5 +1,5 @@
 
 
 export function run() {
-    console.error("[Alias Analysis] has not been implemented")
+    console.error("[Alias Analysis] has not been implemented");
 }

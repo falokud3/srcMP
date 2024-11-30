@@ -1,4 +1,4 @@
-import * as Xml from '../../common/Xml/Xml.js'
+import * as Xml from '../../common/Xml/Xml.js';
 
 class DependenceVector {
 
@@ -11,7 +11,7 @@ class DependenceVector {
     public constructor(loop_nest: Xml.Element[] = []) {
         loop_nest.forEach( (loop: Xml.Element) => {
             this.directionVector.set(loop, Direction.any);
-            this.dirVec.set(loop.text, Direction.any)
+            this.dirVec.set(loop.text, Direction.any);
         });
     }
 
@@ -29,8 +29,8 @@ class DependenceVector {
 
     public get isPlausibleVector() : boolean {
         for (const vector of this.directionVector) {
-            if (vector[1] === Direction.greater) return false;
-            else if (vector[1] === Direction.less) return true;
+            if (vector[1] === Direction.greater.valueOf()) return false;
+            else if (vector[1] === Direction.less.valueOf()) return true;
         }
         return true;
     }
@@ -38,9 +38,9 @@ class DependenceVector {
     public get reverseVector() : DependenceVector {
         const ret = this.clone();
         for (const vector of this.directionVector) {
-            if (vector[1] === Direction.less) {
+            if (vector[1] === Direction.less.valueOf()) {
                 ret.setDirection(vector[0], Direction.greater);
-            } else if (vector[1] === Direction.greater) {
+            } else if (vector[1] === Direction.greater.valueOf()) {
                 ret.setDirection(vector[0], Direction.less);
             }
         }
@@ -49,7 +49,7 @@ class DependenceVector {
 
     public setDirection(loop: Xml.Element, dir: Direction) {
         this.directionVector.set(loop, dir);
-        this.dirVec.set(loop.text, dir)
+        this.dirVec.set(loop.text, dir);
     }
 
     public getDirection(loop: Xml.Element, string_version: boolean = true) : Direction | undefined {
@@ -62,14 +62,14 @@ class DependenceVector {
 
     public containsDirection(keyDir: Direction) : boolean {
         for (const dir of this.directionVector.values()) {
-            if (dir == keyDir) return true;
+            if (dir === keyDir.valueOf()) return true;
         }
         return false;
     }
 
     public isAllEqual() : boolean {
         for (const dir of this.directionVector.values()) {
-            if (dir != Direction.equal) return false;
+            if (dir !== Direction.equal.valueOf()) return false;
         }
         return true;
     }
@@ -103,7 +103,7 @@ class DependenceVector {
         let newDir: Direction;
         for (const loop of other.loops) {
             if (!this.dirVec.has(loop.toString())) {
-                this.directionVector.set(loop, other.getDirection(loop)!)
+                this.directionVector.set(loop, other.getDirection(loop)!);
                 this.dirVec.set(loop.toString(), other.getDirection(loop)!);
                 continue;
             }
@@ -113,7 +113,7 @@ class DependenceVector {
 
             newDir = thisDir !== Direction.nil ? cartesianProduct[thisDir][thatDir] : Direction.nil;
             if (newDir === Direction.nil) this.valid = false;
-            this.directionVector.set(loop, other.getDirection(loop)!)
+            this.directionVector.set(loop, other.getDirection(loop)!);
             this.dirVec.set(loop.toString(), other.getDirection(loop)!);
         }
     }
@@ -130,7 +130,7 @@ export function mergeVectorSets(dvs: DependenceVector[], other: DependenceVector
     while (size-- > 0) {
         const dv = dvs.shift()!;
         for (let i = 0; i < other.length; i++) {
-            const mergedDV = dv.clone()
+            const mergedDV = dv.clone();
             mergedDV.mergeWith(other[i]);
             if (mergedDV.valid) dvs.push(mergedDV);
         }
@@ -153,4 +153,4 @@ const cartesianProduct: number[][] = [
     [Direction.greater, Direction.nil, Direction.nil, Direction.greater],
 ];
 
-export {DependenceVector, Direction as DependenceDir}
+export {DependenceVector, Direction as DependenceDir};

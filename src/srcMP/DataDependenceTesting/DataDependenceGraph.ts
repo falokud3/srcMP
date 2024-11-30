@@ -1,6 +1,6 @@
 import { ArrayAccess, ArrayAccessType } from "./ArrayAccess.js";
 import { DependenceVector } from "./DependenceVector.js";
-import * as Xml from '../../common/Xml/Xml.js'
+import * as Xml from '../../common/Xml/Xml.js';
 
 export class DataDependenceGraph {
 
@@ -27,7 +27,7 @@ export class DataDependenceGraph {
             return arc.equals(value);
         });
 
-        if (!ddgHasArc) this.dependenceArcs.push(arc)
+        if (!ddgHasArc) this.dependenceArcs.push(arc);
     }
 
     public removeArc(other: Arc) : void {

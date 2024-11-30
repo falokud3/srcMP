@@ -1,4 +1,4 @@
-import * as Xml from '../../common/Xml/Xml.js'
+import * as Xml from '../../common/Xml/Xml.js';
 import { ControlFlowGraph, ControlFlowNode } from './ControlFlowGraph.js';
 
 let loopJumps: ControlFlowNode[];
@@ -26,7 +26,7 @@ export function buildGraph(src: Xml.Element) : ControlFlowGraph {
 }
 
 function buildNode(src: Xml.Element) : ControlFlowNode | null {
-    let type: string = src.name;
+    const type: string = src.name;
     if (type === "function") {
         return buildFunction(src);
     } else if (type === "block") {
@@ -45,9 +45,9 @@ function buildNode(src: Xml.Element) : ControlFlowNode | null {
         return buildDo(src);
     } else if (type === "for") {
         return buildFor(src);
-    } else if (type == "init") {
+    } else if (type === "init") {
         return new ControlFlowNode(src);
-    } else if (type == "incr") {
+    } else if (type === "incr") {
         return new ControlFlowNode(src);
     } else if (type === "break" || type === "continue") {
         const ret = new ControlFlowNode(src);
@@ -60,7 +60,7 @@ function buildNode(src: Xml.Element) : ControlFlowNode | null {
         return ret;
     } else if (type === "case" || type === "default") {
         return buildCase(src);
-    } else if (type.includes("stmt") || type === "expr" || type == "decl") {
+    } else if (type.includes("stmt") || type === "expr" || type === "decl") {
         return new ControlFlowNode(src);
     } else if (type === "label") {
         return buildLabel(src);
@@ -82,13 +82,13 @@ function buildFunction(func: Xml.Element) : ControlFlowNode | null {
 function buildBlock(block: Xml.Element) : ControlFlowNode {
     const blockContent = block.get("./xmlns:block_content")!;
     let ret: ControlFlowNode | null = null;
-    const children = blockContent.childElements
+    const children = blockContent.childElements;
 
     for (const child of children) {
         // TODO: Skippable Nodes Refactor
         if (child.name === "function") continue;
 
-        let childnode = buildNode(child);
+        const childnode = buildNode(child);
 
         if (!childnode) continue;
 
@@ -97,8 +97,8 @@ function buildBlock(block: Xml.Element) : ControlFlowNode {
             continue;
         }
 
-        if (child.name != "break" && child.name != "continue" 
-            && child.name != "return" && child.name != "goto") {
+        if (child.name !== "break" && child.name !== "continue" 
+            && child.name !== "return" && child.name !== "goto") {
             ControlFlowNode.connectNodes(ret, childnode);
         } else {
             ControlFlowNode.connectNodes(ret, childnode, false);
@@ -116,7 +116,7 @@ function buildUnit(unit: Xml.Element) : ControlFlowNode | null {
         // TODO: Skippable Nodes Refactor
         if (child.name === "function") continue;
 
-        let childnode = buildNode(child);
+        const childnode = buildNode(child);
 
         if (!childnode) continue;
 
@@ -125,8 +125,8 @@ function buildUnit(unit: Xml.Element) : ControlFlowNode | null {
             continue;
         }
 
-        if (child.name != "break" && child.name != "continue" 
-            && child.name != "return" && child.name != "goto") {
+        if (child.name !== "break" && child.name !== "continue" 
+            && child.name !== "return" && child.name !== "goto") {
             ControlFlowNode.connectNodes(ret, childnode);
         } else {
             ControlFlowNode.connectNodes(ret, childnode, false);
@@ -154,7 +154,8 @@ function buildIf(ifStmt: Xml.Element) : ControlFlowNode {
     tail.push(...firstBlock.getTail());
 
     let cond = firstCond;
-    while (ifXml = ifXml.nextElement) {
+    ifXml = ifXml.nextElement;
+    while (ifXml) {
         const blockXml = ifXml.get("./xmlns:block")!;
         const blockNode = buildBlock(blockXml);
 
@@ -167,6 +168,7 @@ function buildIf(ifStmt: Xml.Element) : ControlFlowNode {
         }
         cond.addAdjacent(blockNode);
         tail.push(...blockNode.getTail());
+        ifXml = ifXml.nextElement;
     }
 
     if (!ifStmt.contains("./xmlns:else")) tail.push(cond);
@@ -179,7 +181,7 @@ function buildCase(caseStmt: Xml.Element) : ControlFlowNode {
     const caseNode = new ControlFlowNode(caseStmt);
 
     let curr: Xml.Element | null = caseStmt;
-    while (curr = curr.nextElement) {
+    while (curr) {
         if (curr.name === "case" || curr.name === "default") break;
         // TODO: Skippable Nodes Refactor
         if (curr.name === "function") continue;
@@ -191,6 +193,7 @@ function buildCase(caseStmt: Xml.Element) : ControlFlowNode {
             loopJumps.pop();
             break;
         }
+        curr = curr.nextElement;
     }
     return caseNode;
 }
@@ -203,8 +206,8 @@ function buildSwitch(switchStmt: Xml.Element) : ControlFlowNode {
     const casesXml = switchStmt.get("./xmlns:block/xmlns:block_content")!
         .childElements
         .filter((node: Xml.Element) => {
-            if (node.name == "case") return true;
-            if (node.name == "default") {
+            if (node.name === "case") return true;
+            if (node.name === "default") {
                 hasDefaultCase = true;
                 return true;
             }
@@ -213,7 +216,7 @@ function buildSwitch(switchStmt: Xml.Element) : ControlFlowNode {
 
     let prevCase: ControlFlowNode | null = null;
     for (const [index, caseXml] of casesXml.entries()) {
-        let caseNode: ControlFlowNode = buildCase(caseXml);
+        const caseNode: ControlFlowNode = buildCase(caseXml);
 
         if (prevCase) ControlFlowNode.connectNodes(prevCase, caseNode);
         cond.addAdjacent(caseNode);
@@ -262,7 +265,7 @@ function buildFor(forstmt: Xml.Element) : ControlFlowNode {
 
     // body
     const blockXml = forstmt.get("./xmlns:block")!;
-    const blockNode = buildBlock(blockXml)!;
+    const blockNode = buildBlock(blockXml);
     ControlFlowNode.connectNodes(initNode, blockNode);
 
     const incrXML = forstmt.get("./xmlns:control/xmlns:incr")!;
@@ -283,7 +286,7 @@ function buildFor(forstmt: Xml.Element) : ControlFlowNode {
 function buildDo(doStmt: Xml.Element) : ControlFlowNode {
 
     const blockXml = doStmt.get("./xmlns:block")!;
-    const blockNode = buildBlock(blockXml)!;
+    const blockNode = buildBlock(blockXml);
 
     // condition
     const conditionXML = doStmt.get("./xmlns:condition")!;
@@ -302,7 +305,7 @@ function buildDo(doStmt: Xml.Element) : ControlFlowNode {
 function resolveLoopJumps(enterNode: ControlFlowNode, exitNode: ControlFlowNode) {
     for (const jumpNode of loopJumps) {
         jumpNode.setConnectable(true);
-        if (jumpNode.xml.name == "continue") {
+        if (jumpNode.xml.name === "continue") {
             ControlFlowNode.connectNodes(jumpNode, enterNode);
         // break
         } else {

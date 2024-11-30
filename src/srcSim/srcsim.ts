@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 
-import * as ParallelProgrammingInfo from './ParallelProgrammingInfo.js'
-import * as Xml from '../common/Xml/Xml.js'
-import { Command } from 'commander'
-import { execSync } from 'child_process'
+import * as ParallelProgrammingInfo from './ParallelProgrammingInfo.js';
+import * as Xml from '../common/Xml/Xml.js';
+import { Command } from 'commander';
+import { execSync } from 'child_process';
 import chalk from 'chalk';
 import { readFileSync } from 'fs';
 
@@ -40,7 +40,7 @@ function formatOP(op: string) : string {
             return 'mul';
         case '/':
         case '/=':
-            return 'div'
+            return 'div';
         case '<':
         case '<=':
         case '>':
@@ -49,7 +49,7 @@ function formatOP(op: string) : string {
         case '!=':
         case '==':
         case '||':
-            return 'lop'
+            return 'lop';
         default:
             return op;
     }
@@ -61,7 +61,7 @@ function isCoalesced(access: Xml.Element) : boolean {
     const expr = access.get('xmlns:index/xmlns:expr');
     // only testing array access that based on thread true
     if (!expr || !divergenceTest(expr)) return true; 
-    return !Boolean(expr.get('.//xmlns:operator[. != "+" and . != "-"]'));
+    return !expr.get('.//xmlns:operator[. != "+" and . != "-"]');
     
 }
 
@@ -73,7 +73,7 @@ function getLatestAssignment(variable: Xml.Element, beforePoint?: Point) : [Xml.
     const pointIsEarlier = (point: Point | undefined, other: Point | undefined) => {
         if (!point) point = NegativeInfinityPoint;
         if (!other) other = NegativeInfinityPoint;
-        return (point.line < other.line || (point.line == other.line && other.col < other.col))
+        return (point.line < other.line || (point.line === other.line && other.col < other.col));
     };
 
     const unary = variable.find(`//xmlns:name[following-sibling::*[1]/text() = '++' 
@@ -113,7 +113,7 @@ function multipleBranchDivergenceTest(variable: Xml.Element, latest: Xml.Element
     const padding = `${" ".repeat(depth)}`;
     const ifs = latest.get('ancestor::xmlns:if_stmt')!.find('xmlns:if');
     for (let i = ifs.length - 1; i >= 0; i--) {
-        const otherBranchResult = getLatestAssignment(variable, ifs[i].nextElement!)
+        const otherBranchResult = getLatestAssignment(variable, ifs[i].nextElement!);
         if (!otherBranchResult[0]) continue;
         if (verbose) console.log(`${padding}variable "${variable.text}" may also depends on "${otherBranchResult[0].text}"`);
         if (divergenceTest(otherBranchResult[0], depth + 1, otherBranchResult[1])) return true;
@@ -125,17 +125,17 @@ function divergenceTest(xml: Xml.Element, depth: number = 0, before?: Point) : b
     // ?: Handeling Arrays and objects
     const vars = xml.find('./descendant-or-self::xmlns:name');
     const padding = `${" ".repeat(depth)}`;
-    if (verbose) console.log(`${padding}"${xml.text.trim()}" depends on variables: {${vars.map((value) => value.text).join(', ')}}`)
+    if (verbose) console.log(`${padding}"${xml.text.trim()}" depends on variables: {${vars.map((value) => value.text).join(', ')}}`);
 
     for (const variable of vars) {
         if (builtInVariables.includes(variable.text)) {
-            if (verbose) console.log(`${padding}${xml.text} is dependent on built-in variable "${variable.text}"`)
+            if (verbose) console.log(`${padding}${xml.text} is dependent on built-in variable "${variable.text}"`);
             return true;
         }
 
         const [latest, beforePoint] = getLatestAssignment(variable, before);
         if (!latest) {
-            if (verbose) console.log(`${padding}No dependence found for variable "${variable.text}"`)
+            if (verbose) console.log(`${padding}No dependence found for variable "${variable.text}"`);
             continue;
         }
 
@@ -186,7 +186,7 @@ function estimateClockCycles(xml: Xml.Element, device: Device) : [number, number
         let cycles = device.ops[formatOP(op.text)];
         if (cycles === undefined) cycles = device.ops.default;
 
-        if (verbose) console.log(`${op.text} -> [${cycles.min},${cycles.max}] ${device.ops[formatOP(op.text)] === undefined ? '(DEFAULT)' : ''}`)
+        if (verbose) console.log(`${op.text} -> [${cycles.min},${cycles.max}] ${device.ops[formatOP(op.text)] === undefined ? '(DEFAULT)' : ''}`);
         min += cycles.min;
         max += cycles.max;
     }
@@ -196,7 +196,7 @@ function estimateClockCycles(xml: Xml.Element, device: Device) : [number, number
         min += device.ops['MOV']?.min ?? device.ops.default.min;
         max += device.ops['MOV']?.max ?? device.ops.default.max;
         if (!isCoalesced(read)) {
-            if (verbose) console.log(read.text, chalk.red("Uncoalesced Access"))
+            if (verbose) console.log(read.text, chalk.red("Uncoalesced Access"));
             min += device.ops['MOV']?.min ?? device.ops.default.min;
             max += device.ops['MOV']?.max ?? device.ops.default.max;
         }
@@ -252,7 +252,7 @@ function outputEstimates(xml: Xml.Element, language: ParallelProgrammingInfo.Sup
             const time = clockCycles.map((cycles) => (cycles / device.clockFrequency / 1000000).toPrecision(5));
             console.log(`  ${device.name} Clock Cycles Estimate Min: ${chalk.yellow(clockCycles[0])} Max: ${chalk.yellow(clockCycles[1])} Avg: ${chalk.yellow(clockCycles[2])}`);
             console.log(`  ${device.name} Time Estimate Min: ${chalk.yellow(time[0])}s Max: ${chalk.yellow(time[1])}s Avg: ${chalk.yellow(time[2])}s`);
-            console.log()
+            console.log();
         }
     }
 }
@@ -279,32 +279,36 @@ function setBuiltInVariables(filePath: string) : ParallelProgrammingInfo.Support
 
     if (extension === '.cu') {
         builtInVariables = ParallelProgrammingInfo.cudaBuiltIns;
-        return 'cu'
+        return 'cu';
     } else if (extension === '.cpp') {
         builtInVariables = ParallelProgrammingInfo.hipBuiltIns;
-        return 'hip'
+        return 'hip';
     } else if (extension === '.cl') {
         builtInVariables = ParallelProgrammingInfo.openclBuiltIns;
-        return 'cl'
+        return 'cl';
     } else {
         console.error(chalk.yellow(`Built in variables for file extension "${extension}" not found. Defaulting to cuda's variables.`));
         builtInVariables = ParallelProgrammingInfo.cudaBuiltIns;
-        return 'cu'
+        return 'cu';
     }
 }
 
 function parseDevices(filePaths: string[]) : Device[] {
-    const setDefault = (filePath: string, device: Device, member: string, type: string, defaultValue: any) => {
+    type op = {
+        min: number;
+        max: number;
+    };
+    const setDefault = (filePath: string, device: Device, member: string, type: string, defaultValue: string | number | boolean | op) => {
         //@ts-expect-error - using indexing code smell to avoid repetition in code
         const value = device[member];
         if (value === undefined) {
             //@ts-expect-error - same as above
             device[member] = defaultValue;
-            console.log(chalk.yellow(`${filePath} Device ${member} not found, defaulting to ${JSON.stringify(defaultValue)}.`))
+            console.log(chalk.yellow(`${filePath} Device ${member} not found, defaulting to ${JSON.stringify(defaultValue)}.`));
         } else if (typeof value !== type) {
             //@ts-expect-error - same as above
             device[member] = defaultValue;
-            console.log(chalk.yellow(`${filePath} Device ${member} is not the correct data type, defaulting to ${JSON.stringify(defaultValue)}.`))
+            console.log(chalk.yellow(`${filePath} Device ${member} is not the correct data type, defaulting to ${JSON.stringify(defaultValue)}.`));
         }
     };
     const devices: Device[] = [];
@@ -312,16 +316,16 @@ function parseDevices(filePaths: string[]) : Device[] {
         const device: Device = JSON.parse(readFileSync(filePath).toString());
         if (device.name === undefined) {
             device.name = `Device${devices.length + 1}`;
-            console.log(chalk.yellow(`${filePath} Device name not found, defaulting to ${device.name}.`))
+            console.log(chalk.yellow(`${filePath} Device name not found, defaulting to ${device.name}.`));
         }
         setDefault(filePath, device, 'name', 'string', `Device${devices.length + 1}`);
         setDefault(filePath, device, 'clockFrequency', 'number', 750);
         setDefault(filePath, device, 'affectedByDivergence', 'boolean', true);
-        setDefault(filePath, device, 'ops', 'object', {default: {min:6, max: 6}})
+        setDefault(filePath, device, 'ops', 'object', {default: {min:6, max: 6}});
 
         if (device.ops.default === undefined) {
-            device.ops.default = {min: 6, max: 6}
-            console.log(chalk.yellow(`${filePath} Device default op not found, defaulting to ${JSON.stringify(device.ops.default)}.`))
+            device.ops.default = {min: 6, max: 6};
+            console.log(chalk.yellow(`${filePath} Device default op not found, defaulting to ${JSON.stringify(device.ops.default)}.`));
         }
 
         devices.push(device);
@@ -343,13 +347,13 @@ function main() : number {
         .requiredOption('-d, --devices <device-files...>', 'The files that describe the characteristics of the devices in JSON for estimation.' )
         .option('-v, --verbose', 'Displays the results of internal steps used to calculate estimation.', false);
 
-    program.addHelpText('before', `${chalk.red('NOTE:')} This programs assumes that device clock frequency provided is in megahertz (MHz)`)
+    program.addHelpText('before', `${chalk.red('NOTE:')} This programs assumes that device clock frequency provided is in megahertz (MHz)`);
 
     program.parse();
 
     const options = program.opts();
 
-    const devices = parseDevices(<string[]> options.devices)
+    const devices = parseDevices(<string[]> options.devices);
 
     if (devices.length === 0) {
         console.error(chalk.red('Error: Could not parse any devices.'));
@@ -366,5 +370,5 @@ function main() : number {
     return 0;
 }
 
-main()
+main();
 

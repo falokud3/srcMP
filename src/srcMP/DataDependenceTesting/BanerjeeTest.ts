@@ -1,7 +1,7 @@
 import { DependenceVector } from './DependenceVector';
 import { SubscriptPair } from './SubscriptPair.js';
 import * as Xml from '../../common/Xml/Xml.js';
-import * as ComputerAlgebraSystem from '../../common/ComputerAlgebraSystem.js'
+import * as ComputerAlgebraSystem from '../../common/ComputerAlgebraSystem.js';
 
 
 export class BanerjeeTest {
@@ -11,7 +11,7 @@ export class BanerjeeTest {
     private const2 : string;
     private pair: SubscriptPair;
 
-    private isTestEligible: boolean = true
+    private isTestEligible: boolean = true;
 
     static readonly  LB = 0;
     static readonly  UB = 4;
@@ -31,7 +31,7 @@ export class BanerjeeTest {
         this.pair = pair;
         this.loopnest = pair.getEnclosingLoops();
 
-        this.banerjeeBounds = new Map<string, number[]>()
+        this.banerjeeBounds = new Map<string, number[]>();
 
         // get loop index variables
         const idList: string[] = [];
@@ -75,7 +75,7 @@ export class BanerjeeTest {
             const A = coeff1;
             const B = coeff2;
 
-            let U = loop.upperboundExpression
+            let U = loop.upperboundExpression;
             let L = loop.lowerboundExpression;
             let N = Xml.getCanonicalIncrementValue(loop);
 
@@ -84,7 +84,7 @@ export class BanerjeeTest {
                 break;
             }
 
-            const bounds: number[] = []
+            const bounds: number[] = [];
 
             if ( N >= 0) {
                 bounds.splice(BanerjeeTest.LB_any, 0,

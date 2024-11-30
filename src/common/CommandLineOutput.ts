@@ -1,8 +1,6 @@
-import chalk from 'chalk';
+// import chalk from 'chalk';
 import wrapAnsi from 'wrap-ansi';
-import * as Xml from './Xml/Xml.js'
-
-const log = console.log;
+import * as Xml from './Xml/Xml.js';
 
 export interface CLIMessage  {
     
@@ -35,7 +33,7 @@ export type Verbosity = typeof Verbosity[keyof typeof Verbosity];
 
 let verbositySetting : Verbosity = Verbosity.Simple;
 
-export const setVerbosity = (verbosity: Verbosity) => {verbositySetting = verbosity};
+export const setVerbosity = (verbosity: Verbosity) => {verbositySetting = verbosity;};
 
 export const errorStart = (numIssues: number) =>  numIssues !== 0 ? 'And the' : 'Because the';
 export const numFormat = (amount: number, word: string) => amount === 1 ? `1 ${word}` 

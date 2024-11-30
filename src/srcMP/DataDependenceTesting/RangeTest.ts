@@ -12,7 +12,7 @@ class RangeTest {
         this.g = pair.getSubscript2();
         this.pair = pair;
         
-        throw new Error("DONE!")
+        throw new Error("DONE!");
     }
 
     public pairIsElligible() : boolean {
@@ -20,7 +20,7 @@ class RangeTest {
     }
 
     public testDependence(dv: DependenceVector) : boolean {
-        let ret: boolean = true;
+        const ret: boolean = true;
         
         return ret;
     }
@@ -34,4 +34,4 @@ class RangeTest {
     }
 }
 
-export {RangeTest}
+export {RangeTest};

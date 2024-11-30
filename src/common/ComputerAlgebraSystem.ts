@@ -5,9 +5,9 @@
  * * Current Library: Algebrite (typing outlinded in modules/)
  */
 // import * as Algebrite from 'algebrite'
-import * as Xml from './Xml/Xml.js'
+import * as Xml from './Xml/Xml.js';
 import { execSync } from 'child_process';
-import algebrite from 'algebrite'
+import algebrite from 'algebrite';
 
 /**
  * Algebrite outputs this value for true comparisons (==, <, etc.)
@@ -36,10 +36,10 @@ export function simplify(expression: string)  {
 }
 
 export function safeSimplify(expression: string) {
-    expression = expression.replace(/([\w\*\&\[\]\.\(\)]+)\s*\+\+/gm, '$1')
-    expression = expression.replace(/\+\+\s*([\w\*\&\[\]\.\(\)]+)/gm, '$1')
-    expression = expression.replace(/([\w\*\&\[\]\.\(\)]+)\s*--/gm, '$1')
-    expression = expression.replace(/--\s*([\w\*\&\[\]\.\(\)]+)/gm, '$1')
+    expression = expression.replace(/([\w\*\&\[\]\.\(\)]+)\s*\+\+/gm, '$1');
+    expression = expression.replace(/\+\+\s*([\w\*\&\[\]\.\(\)]+)/gm, '$1');
+    expression = expression.replace(/([\w\*\&\[\]\.\(\)]+)\s*--/gm, '$1');
+    expression = expression.replace(/--\s*([\w\*\&\[\]\.\(\)]+)/gm, '$1');
 
     // TODO: convert . expressions to variables
     // TODO: deconvert variables to expressions
@@ -55,26 +55,26 @@ export function simplifyXml(expression: Xml.Element) : Xml.Element | null {
 
     // srcml currently has a bug that causes errors when parsing text leading with "-"
     if (newExpression.startsWith("-")) {
-        newExpression = `(${newExpression})`
+        newExpression = `(${newExpression})`;
     }
 
     const language = expression.get("/xmlns:unit")?.getAttribute("language") ?? "";
     const buffer = execSync(`srcml --text ${newExpression} --language ${language}`, {timeout: 10000});
     const bufferRoot = Xml.parseXmlString(buffer.toString());
-    if (!bufferRoot) throw new Error("TODO") // TODO: Write better error
+    if (!bufferRoot) throw new Error("TODO"); // TODO: Write better error
     return bufferRoot.get("./xmlns:expr");
 }
 
 export function invertExpression(toXml: Xml.Element, from: Xml.Element) : Xml.Element | null {
     if (toXml === null || !from) return null;
-    const diff = simplify(`${toXml.text} - (${from.text})`)
+    const diff = simplify(`${toXml.text} - (${from.text})`);
     if (diff === "nil" || diff.includes(toXml.text)) return null;
 
-    let inverted = simplify(`${toXml.text} + (${diff})`)
+    let inverted = simplify(`${toXml.text} + (${diff})`);
 
     // srcml currently has a bug that causes errors when parsing text leading with "-"
     if (inverted.startsWith("-")) {
-        inverted = `(${inverted})`
+        inverted = `(${inverted})`;
     }
     
     // const newExpr = Number(diff)
@@ -87,7 +87,7 @@ export function invertExpression(toXml: Xml.Element, from: Xml.Element) : Xml.El
     const language = toXml.get("/xmlns:unit")?.getAttribute("language") ?? "";
     const buffer = execSync(`srcml --text "${inverted}" --language ${language}`, {timeout: 10000});
     const rhsRoot = Xml.parseXmlString(buffer.toString());
-    return rhsRoot!.get("./xmlns:expr");
+    return rhsRoot.get("./xmlns:expr");
 }
 
 /**
@@ -95,7 +95,7 @@ export function invertExpression(toXml: Xml.Element, from: Xml.Element) : Xml.El
  * @param expression 
  */
 export function getVariables(expression: string) : Set<string> {
-    const regex = /[a-zA-Z_][a-zA-Z0-9_]*/g
+    const regex = /[a-zA-Z_][a-zA-Z0-9_]*/g;
     const matches = regex.exec(expression);
     return matches ? new Set<string>(matches) : new Set<string>();
 }

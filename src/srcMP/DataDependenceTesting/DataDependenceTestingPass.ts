@@ -1,5 +1,5 @@
 // Data Dependence Test Framework
-import * as Xml from '../../common/Xml/Xml.js'
+import * as Xml from '../../common/Xml/Xml.js';
 
 import { ArrayAccess } from './ArrayAccess.js';
 import { DependenceVector, DependenceDir, mergeVectorSets } from './DependenceVector.js';
@@ -8,20 +8,20 @@ import { SubscriptPair } from './SubscriptPair.js';
 import { RangeTest } from './RangeTest.js';
 import { BanerjeeTest } from './BanerjeeTest.js';
 import { Arc, DataDependenceGraph as DDGraph } from './DataDependenceGraph.js';
-import * as AliasAnalysis from './AliasAnalysis.js'
-import * as RangeAnalysis from './RangeAnalysis.js'
+// import * as AliasAnalysis from './AliasAnalysis.js';
+// import * as RangeAnalysis from './RangeAnalysis.js';
 import { extractOutermostDependenceTestEligibleLoops } from './Eligibility.js';
 
-import * as ComputerAlgebraSystem from '../../common/ComputerAlgebraSystem.js'
+import * as ComputerAlgebraSystem from '../../common/ComputerAlgebraSystem.js';
 import { Verbosity } from '../../common/CommandLineOutput.js';
-import * as CLO from '../../common/CommandLineOutput.js'
+import * as CLO from '../../common/CommandLineOutput.js';
 
 
 export function run(program: Xml.Element) : DDGraph {
    const startTime = performance.now();
    CLO.output({format: (verbosity: Verbosity) => {
       if (verbosity !== Verbosity.Internal) return '';
-      return '[Data Dependence Pass] Start'
+      return '[Data Dependence Pass] Start';
    }});
 
    const ddg = new DDGraph();
@@ -39,7 +39,7 @@ export function run(program: Xml.Element) : DDGraph {
    const endTime = performance.now();
    CLO.output({format: (verbosity: Verbosity) => {
       if (verbosity !== Verbosity.Internal) return '';
-      return `[Data Dependence Pass] End -- Duration: ${(endTime - startTime).toFixed(3)}ms`
+      return `[Data Dependence Pass] End -- Duration: ${(endTime - startTime).toFixed(3)}ms`;
    }});
 
    return ddg;
@@ -50,7 +50,7 @@ export function run(program: Xml.Element) : DDGraph {
 function analyzeLoopForDependence(loopNode: Xml.ForLoop) : DDGraph {
    const loopDDG = new DDGraph();
 
-   const array_access_map: Map<String, ArrayAccess[]> = 
+   const array_access_map: Map<string, ArrayAccess[]> = 
       loopNode.getArrayAccesses();
    const innerLoopNest = loopNode.getInnerLoopNest();
    let pairDepVectors: DependenceVector[];
@@ -76,7 +76,7 @@ function analyzeLoopForDependence(loopNode: Xml.ForLoop) : DDGraph {
             // TODO: Substitute Range Info
 
             pairDepVectors = [];
-            let dependenceExists: boolean = testAccessPair(access_i, access_j, 
+            const dependenceExists: boolean = testAccessPair(access_i, access_j, 
                relevantLoopNest, pairDepVectors);
             
             if (dependenceExists) {
@@ -105,11 +105,11 @@ function testAccessPair(access: ArrayAccess, other_access: ArrayAccess,
 // dvs is an OUT variable
 function testSubscriptBySubscript(access: ArrayAccess, other_access: ArrayAccess,
    loopNest: Xml.Element[], dvs: DependenceVector[]) : boolean {
-   if (access.getArrayDimensionality() == other_access.getArrayDimensionality()) {
+   if (access.getArrayDimensionality() === other_access.getArrayDimensionality()) {
       const pairs: SubscriptPair[] = [];
       const dimensions = access.getArrayDimensionality();
 
-      const language = loopNest[0].get("/xmlns:unit")?.getAttribute("language") ?? "C++"
+      // const language = loopNest[0].get("/xmlns:unit")?.getAttribute("language") ?? "C++";
 
       for (let dim = 1; dim <= dimensions; dim++) {
          // TODO: RANGE SUBSTITUTION
@@ -145,9 +145,9 @@ function partitionPairs(pairs: SubscriptPair[]) : SubscriptPair[][] {
    const partitions: SubscriptPair[][] = [];
    pairs.forEach((pair: SubscriptPair) => {
       partitions.push([pair]);
-   }) 
+   }); 
 
-   const loopNest = pairs[0].getEnclosingLoops() as Xml.ForLoop[];
+   const loopNest = pairs[0].getEnclosingLoops();
    loopNest.forEach((loopNode: Xml.ForLoop) => {
       const loop_indexVar = loopNode.getLoopIndexVariableName()!.text;
       let k: number | undefined;
@@ -198,15 +198,15 @@ function testPartition(parition: SubscriptPair[], partitoinDepVectors: Dependenc
 }
 
 function testZIV(pair: SubscriptPair, pairDependenceVectors: DependenceVector[]) : boolean {
-   const expr1 = pair.getSubscript1().get('xmlns:expr')?.text // pair.getSubscript1()?.child(1)?.text;
-   const expr2 = pair.getSubscript2().get('xmlns:expr')?.text
+   const expr1 = pair.getSubscript1().get('xmlns:expr')?.text; // pair.getSubscript1()?.child(1)?.text;
+   const expr2 = pair.getSubscript2().get('xmlns:expr')?.text;
 
    if (!expr1 || !expr2) {
       pairDependenceVectors.push(new DependenceVector(pair.getEnclosingLoops()));
       return true;
    }
 
-   const exprString = `(${expr1} - (${expr2})) == 0`
+   const exprString = `(${expr1} - (${expr2})) == 0`;
    const expression = ComputerAlgebraSystem.simplify(exprString);
 
    const result = Number(expression);
@@ -219,7 +219,7 @@ function testZIV(pair: SubscriptPair, pairDependenceVectors: DependenceVector[])
 }
 
 function testSIV(pair: SubscriptPair, pairDependenceVectors: DependenceVector[]) : boolean {
-   throw new Error("Not Yet Implemented")
+   throw new Error("Not Yet Implemented");
 
 
 }
@@ -235,7 +235,7 @@ function testMIV(pair: SubscriptPair, pairDependenceVectors: DependenceVector[])
       return true;
    }
 
-   const new_dvs: DependenceVector[] = testDependenceTree(ddtest)
+   const new_dvs: DependenceVector[] = testDependenceTree(ddtest);
    pairDependenceVectors.push(...new_dvs);
    
    // no dependence vectors = no depedence
@@ -244,8 +244,8 @@ function testMIV(pair: SubscriptPair, pairDependenceVectors: DependenceVector[])
    // test tree
 
 function testDependenceTree(ddtest: RangeTest | BanerjeeTest): DependenceVector[] {
-   const dv_list: DependenceVector[] = []
-   const dv: DependenceVector = new DependenceVector(ddtest.subscriptPair.getEnclosingLoops())
+   const dv_list: DependenceVector[] = [];
+   const dv: DependenceVector = new DependenceVector(ddtest.subscriptPair.getEnclosingLoops());
 
    if (ddtest.testDependence(dv)) testTree(ddtest, dv, 0, dv_list);
 
@@ -254,8 +254,8 @@ function testDependenceTree(ddtest: RangeTest | BanerjeeTest): DependenceVector[
 }
 
 function testTree(ddtest: RangeTest | BanerjeeTest, dv: DependenceVector, pos: number, dv_list: DependenceVector[]) {
-   let loopNest = ddtest.subscriptPair.getEnclosingLoops();
-   let loop = loopNest[pos];
+   const loopNest = ddtest.subscriptPair.getEnclosingLoops();
+   const loop = loopNest[pos];
    for (let dir = DependenceDir.less; dir <= DependenceDir.greater; dir++) {
 
       dv.setDirection(loop, dir);

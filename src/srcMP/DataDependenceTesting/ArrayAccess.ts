@@ -1,4 +1,4 @@
-import * as Xml from '../../common/Xml/Xml.js'
+import * as Xml from '../../common/Xml/Xml.js';
 
 export type ArrayAccessType = "Write" | "Read";
 
@@ -52,7 +52,7 @@ export class ArrayAccess {
     public toString(): string {
         let ret: string = "[Array Access] ";
         ret += "Access Expression: " + this.access.text + " ";
-        ret += "Access Type: " + (this.access_type == ArrayAccess.WRITE_ACCESS ? "Write" : "Read") + " ";
+        ret += "Access Type: " + (this.access_type === ArrayAccess.WRITE_ACCESS ? "Write" : "Read") + " ";
         return ret;
     }
 

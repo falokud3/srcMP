@@ -1,6 +1,6 @@
-import * as Xml from '../../common/Xml/Xml.js'
+import * as Xml from '../../common/Xml/Xml.js';
 import { buildGraph } from './ControlFlowGraphBuilder.js';
-import { RangeDomain, Range } from './RangeDomain.js';
+import { RangeDomain } from './RangeDomain.js';
 
 // ! doesn't support labels and goto statements
 export class ControlFlowGraph {
@@ -16,7 +16,7 @@ export class ControlFlowGraph {
     }
 
     public toString() {
-        let ret: string = "digraph G {\n"
+        let ret: string = "digraph G {\n";
 
         for (const node of this.nodes) {
             ret += node.nodeInfoToString() + "\n";
@@ -27,7 +27,7 @@ export class ControlFlowGraph {
             if (edges.length > 0) ret += edges  + "\n";
         }
 
-        ret += "}"
+        ret += "}";
         return ret;
     }
 
@@ -73,8 +73,8 @@ export class ControlFlowGraph {
         let to: ControlFlowNode | null = null;
 
         // ! HACKY AND BAD
-        const s1 = stmt1.parentElement
-        const s2 = stmt2.parentElement
+        const s1 = stmt1.parentElement;
+        const s2 = stmt2.parentElement;
 
         if (!s1 || !s2) return true;
 
@@ -97,7 +97,7 @@ export class ControlFlowGraph {
     }
 
     private substituteAll(src: Xml.Element) : Xml.Element {
-        throw new Error("NOT IMPLEMEnteD")
+        throw new Error("NOT IMPLEMEnteD");
     }
 
     public getRangeMap(node: Xml.Element) : Map<string, RangeDomain> {
@@ -115,7 +115,7 @@ export class ControlFlowGraph {
     }
 
     public static getSubKeys(node: Xml.Element) : string[] {
-        let ret: string[] = [];
+        const ret: string[] = [];
 
         for (const child of node.childElements) {
             ret.push(`${child.line} ${child.text}`);
@@ -167,7 +167,7 @@ export class ControlFlowNode {
     public loopVariants: Set<Xml.Element> | undefined = undefined;
 
     public constructor(data: Xml.Element) {
-        this.xml = data
+        this.xml = data;
         this._idNum = ControlFlowNode.maxID++;
     }
 
@@ -183,7 +183,7 @@ export class ControlFlowNode {
     // connecting tip to tail
     public static connectNodes(from: ControlFlowNode, to: ControlFlowNode, updateTail: boolean = true) {
         // spread fixes weird bug were tail would grow when adding nodes
-        const fromTail = [...from.getTail()]
+        const fromTail = [...from.getTail()];
 
         for (const tailNode of fromTail) {
             if (!tailNode.connectable) continue;
@@ -293,12 +293,12 @@ export class ControlFlowNode {
         let ret = "";
         ret += `node${this._idNum} [label="#${this.order}\\n<${this.xml.name}>\\n`;
         ret += `${this.xml.text.trim()}\\n`;
-        ret += `${this.currRanges.toString()}\\n"]`
+        ret += `${this.currRanges.toString()}\\n"]`;
         return ret;
     }
 
     public nodeEdgesToString() : string {
-        if (this.outEdges.length == 0) return "";
+        if (this.outEdges.length === 0) return "";
 
         let ret = `node${this._idNum}->{ `;
 
@@ -306,7 +306,7 @@ export class ControlFlowNode {
             ret += `node${adj._idNum} `;
         }
 
-        ret += "};"
+        ret += "};";
         return ret;
     }
 

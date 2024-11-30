@@ -1,9 +1,7 @@
-
-import { execPath } from "process";
 import XmlElement from "./Element.js";
 import { execSync } from "child_process";
 
-import * as Xml from './Xml.js'
+import * as Xml from './Xml.js';
 
 // TODO: Refactor
 
@@ -73,8 +71,8 @@ export function regularizeAugAssignment(augAssign: XmlElement) : XmlElement {
     const expr = augAssign.copy();
     
     const op = expr.childElements.find((node) => isAugAssignmentOperator(node));
-    const from = op?.prevElement
-    if (!op || !from) throw new Error('Improper Augmented Assignment Form')
+    const from = op?.prevElement;
+    if (!op || !from) throw new Error('Improper Augmented Assignment Form');
 
     const newExpression = `(${getRHSFromOp(op).text.trim()}) ${op.text.substring(0,op.text.length - 1)} ${from.text}`;
     const language = augAssign.get("/xmlns:unit")?.getAttribute("language") ?? "";

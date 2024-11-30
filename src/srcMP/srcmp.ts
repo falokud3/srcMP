@@ -1,14 +1,13 @@
 #!/usr/bin/env node
-import * as Xml from '../common/Xml/Xml.js'
-import * as DDT from './DataDependenceTesting/DataDependenceTestingPass.js'
+import * as Xml from '../common/Xml/Xml.js';
+// import * as DDT from './DataDependenceTesting/DataDependenceTestingPass.js';
 
-import { Command } from 'commander'
+import { Command } from 'commander';
 import { execSync } from 'child_process';
-import * as PLD from './ParallelizableLoopDetection/ParallelizableLoopDetectionPass.js';
 import { Verbosity, setVerbosity } from '../common/CommandLineOutput.js';
 import { getRanges } from './DataDependenceTesting/RangeAnalysis.js';
-import { writeFile } from 'fs';
-import { ControlFlowGraph } from './DataDependenceTesting/ControlFlowGraph.js';
+// import { writeFile } from 'fs';
+// import { ControlFlowGraph } from './DataDependenceTesting/ControlFlowGraph.js';
 
 function runCompiler(program: Xml.Element) : Xml.Element {
     Xml.setNamespaces(program);
@@ -16,15 +15,15 @@ function runCompiler(program: Xml.Element) : Xml.Element {
     setVerbosity(Verbosity.Silent);
     // const programDDG = DDT.run(program);
 
-    getRanges(program.get('.//xmlns:function')!)
+    getRanges(program.get('.//xmlns:function')!);
     // PLD.run(program, programDDG);  //
     // TODO: OUTPUT srcml option
     return program;
 }
 
 function outputFile(content: Xml.Element, inputFilePath: string) {
-    let index = Math.max(inputFilePath.lastIndexOf('/'), 0);
-    const filePath = `${inputFilePath.substring(0, index + 1)}srcmp_${inputFilePath.substring(index + 1)}`;
+    const index = Math.max(inputFilePath.lastIndexOf('/'), 0);
+    // const filePath = `${inputFilePath.substring(0, index + 1)}srcmp_${inputFilePath.substring(index + 1)}`;
 
     // writeFile(filePath, content.text, (err) => {if (err) console.error("ERROR")}); // TODO: ERROR
 
@@ -39,7 +38,7 @@ function outputFile(content: Xml.Element, inputFilePath: string) {
 function getFileXml(srcPath: string) : Xml.Element {
     
     //TODO: Create SRCML interface for whole project to use
-    const fileExtension = srcPath.substring(srcPath.lastIndexOf("."))
+    const fileExtension = srcPath.substring(srcPath.lastIndexOf("."));
     
     if (fileExtension !== ".xml") {
         const buffer = execSync(`srcml --position ${srcPath}`, {timeout: 10000, maxBuffer: 1024 * 1024 * 10});
@@ -62,7 +61,6 @@ function main() : number {
         .argument('<input-files...>', 'The files to be compiled');
 
     program.parse();
-    program.args    
 
     for (const inputFile of program.args[0].split(' ').filter((arg) => arg.length > 0)) {
         // try {

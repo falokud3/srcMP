@@ -3,16 +3,15 @@ import { assert } from "console";
 
 import { ArrayAccess } from '../../srcMP/DataDependenceTesting/ArrayAccess.js';
 import XmlElement from "./Element.js";
-import * as Xml from './Xml.js'
-import * as RangeAnalysis from '../../srcMP/DataDependenceTesting/RangeAnalysis.js'
-import * as CAS from '../ComputerAlgebraSystem.js'
-import exp from "constants";
+import * as Xml from './Xml.js';
+import * as RangeAnalysis from '../../srcMP/DataDependenceTesting/RangeAnalysis.js';
+import * as CAS from '../ComputerAlgebraSystem.js';
 
 
 export class ForLoop extends XmlElement {
 
     public constructor(domElement: Element) {
-        assert(domElement.tagName === "for")
+        assert(domElement.tagName === "for");
         super(domElement);
     }
 
@@ -68,7 +67,7 @@ export class ForLoop extends XmlElement {
     }
 
     public getLoopIndexVariableName() : XmlElement | null {
-        assert(this.name === "for")
+        assert(this.name === "for");
         return this.get("xmlns:control/xmlns:incr/xmlns:expr/xmlns:name");
     }
 
@@ -81,7 +80,7 @@ export class ForLoop extends XmlElement {
         const accessMap = new Map<string, ArrayAccess[]>();
         const accesses = this.find('.//xmlns:name[xmlns:index]');
         accesses.forEach((access: Xml.Element) => {
-            const parentStmt = access.parentElement
+            const parentStmt = access.parentElement;
 
             if (!parentStmt) return;
             if (parentStmt.name === "decl") return;
@@ -117,13 +116,13 @@ export class ForLoop extends XmlElement {
     public static getCommonLoops(loopNest: ForLoop[], other_loopNest: ForLoop[]) : ForLoop[] {
         return loopNest.filter((node: ForLoop) => {
             return other_loopNest.some((inner) => {
-                return node.text === inner.text
+                return node.text === inner.text;
             });
         });
     }
 
     public get upperboundExpression() : string | number {
-        const xmlCondOp = this.get('xmlns:control/xmlns:condition/xmlns:expr/xmlns:operator')
+        const xmlCondOp = this.get('xmlns:control/xmlns:condition/xmlns:expr/xmlns:operator');
         if (!xmlCondOp) throw new Error("UpperBoundExpression Missing Condition"); //TODO: change this
         const condOp = xmlCondOp.text;
         const step = getCanonicalIncrementValue(this);
@@ -181,7 +180,7 @@ export function getCanonicalIncrementValue(loop: Xml.ForLoop): number | string {
    const incrExpr = loop.increment.child(0);
    let incrStep: Xml.Element = loop;
    let isNegativeStep: boolean = false;
-   if (!incrExpr) return 'N/A' // TODO : should probably be undefined
+   if (!incrExpr) return 'N/A'; // TODO : should probably be undefined
 
    // TODO: Add Assert
    if (incrExpr.contains("./xmlns:operator[text()='++']")) {
@@ -236,7 +235,7 @@ export function getCanonicalIndexVariable(loop: Xml.ForLoop): Xml.Element | null
 // TODO: check if variable is type int and allow for declarations outside init
    const init = loop.initialization;
    // handles having no init and multiple init scenarios
-   if (init.childElements.length != 1) return null;
+   if (init.childElements.length !== 1) return null;
 
    const initStatement = init.child(0)!;
    const variableLocation = initStatement.name === "decl" ? 1 : 0;

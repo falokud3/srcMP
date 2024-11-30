@@ -1,6 +1,6 @@
 import { assert } from 'console';
-import * as Xml from '../../common/Xml/Xml.js'
-import * as CAS from '../../common/ComputerAlgebraSystem.js'
+import * as Xml from '../../common/Xml/Xml.js';
+import * as CAS from '../../common/ComputerAlgebraSystem.js';
 
 export class RangeDomain {
     private ranges: Map<string, Range>;
@@ -36,8 +36,8 @@ export class RangeDomain {
     }
 
     public killArraysWith(symbol: Xml.Element) {
-        assert(symbol.name === "name")
-        const symbolName = symbol.text
+        assert(symbol.name === "name");
+        const symbolName = symbol.text;
         for (const range of this.ranges) {
             if (range[0].includes("[") 
                 && (range[1].lowerbound.includes(symbolName) 
@@ -66,8 +66,8 @@ export class RangeDomain {
                     range[1].upperbound = Range.substitute(range[1].upperbound, original.text, replacement.upperbound);
                 }
             } else {
-                range[1].lowerbound = Range.substitute(range[1].lowerbound, original.text, replacement.text)
-                range[1].upperbound = Range.substitute(range[1].upperbound, original.text, replacement.text)
+                range[1].lowerbound = Range.substitute(range[1].lowerbound, original.text, replacement.text);
+                range[1].upperbound = Range.substitute(range[1].upperbound, original.text, replacement.text);
 
             }
         }
@@ -124,7 +124,7 @@ export class RangeDomain {
     }
 
     public isEmpty() : boolean {
-        return this.ranges.size == 0;
+        return this.ranges.size === 0;
     }
 
     public equals(other: RangeDomain) : boolean {
@@ -142,7 +142,7 @@ export class RangeDomain {
             if (result?.isOmega ?? true) {
                 this.removeRange(variable);
             } else {
-                this.setRange(result!);
+                this.setRange(result);
             }
         }
 
@@ -165,9 +165,9 @@ export class RangeDomain {
         for (const affect of affected) {
             const result = RangeDomain.widenRange(this, other.getRange(affect), this.getRange(affect));
             if (result.isOmega) {
-                this.removeRange(affect)
+                this.removeRange(affect);
             } else {
-                this.setRange(result)
+                this.setRange(result);
             }
         }
     }
@@ -181,7 +181,7 @@ export class RangeDomain {
             const result = Range.unionRanges(this.getRange(variable), 
                 otherRange.getRange(variable));
             if (result.isOmega) {
-                this.removeRange(variable)
+                this.removeRange(variable);
             } else {
                 this.setRange(result);
             }
@@ -194,7 +194,7 @@ export class RangeDomain {
         }
 
         for (const range of this.ranges) {
-            const newRange = Range.intersectRanges(range[1], other.getRange(range[0]))
+            const newRange = Range.intersectRanges(range[1], other.getRange(range[0]));
         }
     }
 
@@ -203,7 +203,7 @@ export class RangeDomain {
         if (!e && !widen) return new Range('NULL', String(-Infinity), String(Infinity));
 
         if (!e) return widen!.copy();
-        else if (!widen) return e!.copy();
+        else if (!widen) return e.copy();
 
         if (e.isOmega || widen.isOmega){
             // TODO: CHECK EXPECTED BEHAVIOR
@@ -237,7 +237,7 @@ export class RangeDomain {
     public toString() : string {
         let ret = "[";
         for (const variable of this.ranges.keys()) {
-            ret += this.getRange(variable)!.toString() + ", "
+            ret += this.getRange(variable)!.toString() + ", ";
         }
         if (!this.isEmpty()) ret = ret.substring(0, ret.length - 2);
         ret += "]";
@@ -311,7 +311,7 @@ export class Range {
     }
 
     static substitute(inputString: string, original: string, replacement: string) : string {
-        return inputString.replace(new RegExp("\\b"+original+"\\b"), replacement)
+        return inputString.replace(new RegExp("\\b"+original+"\\b"), replacement);
     }
 
     public static unionRanges(r1?: Range, r2?: Range) : Range {
@@ -320,7 +320,7 @@ export class Range {
         else if (!r1) {
             return r2!;
         } else if (!r2) {
-            return r1!;
+            return r1;
         }
  
         const lbRelation = CAS.compare(r1.lowerbound, r2.lowerbound);
@@ -342,7 +342,7 @@ export class Range {
         else if (!r1) {
             return r2!;
         } else if (!r2) {
-            return r1!;
+            return r1;
         }
 
         const lbRelation = CAS.compare(r1.lowerbound, r2.lowerbound);

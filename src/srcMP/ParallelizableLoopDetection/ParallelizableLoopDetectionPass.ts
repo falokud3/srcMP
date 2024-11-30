@@ -1,10 +1,10 @@
 import chalk from "chalk";
-import { CLIMessage, Verbosity, examples, output } from '../../common/CommandLineOutput.js'
+import { CLIMessage, Verbosity, examples, output } from '../../common/CommandLineOutput.js';
 import { DataDependenceGraph } from "../DataDependenceTesting/DataDependenceGraph.js";
 import { Direction } from "../DataDependenceTesting/DependenceVector.js";
 import { extractOutermostDependenceTestEligibleLoops } from "../DataDependenceTesting/Eligibility.js";
 import { collectScalarDependencies } from "../DataDependenceTesting/ScalarDependenceTest.js";
-import * as Xml from '../../common/Xml/Xml.js'
+import * as Xml from '../../common/Xml/Xml.js';
 import { createXml } from "../../common/srcml.js";
 
 
@@ -14,7 +14,7 @@ export function run(program: Xml.Element, programDDG: DataDependenceGraph) {
     for (const outerLoop of outerLoops) {
         messages.push(...parallelizeLoopNest(outerLoop, programDDG));
     }
-    removeExistingPragmas(program)
+    removeExistingPragmas(program);
     output(...messages);    
     insertPragmas(messages);
 
@@ -128,9 +128,9 @@ export class ParallelizableStatus implements CLIMessage {
             output += `is ${chalk.red('not parallelizable')} `;
 
             if (this.arrayDeps.size > 0) {
-                output += 'due to loop carried array dependencies.'
+                output += 'due to loop carried array dependencies.';
             } else if (this.containsScalarDependencies) {
-                output += 'due to scalar dependencies.'
+                output += 'due to scalar dependencies.';
             } else {
                 output += 'because it contains a break statement.';
             }
@@ -154,7 +154,7 @@ export class ParallelizableStatus implements CLIMessage {
             body = `${this.loop.line}:${this.loop.col}| for${this.loop.header.text} is ${chalk.green('parallelizable')}.\n`;
 
             if (this.parallelizableOuterLoop) {
-                body += `${chalk.yellow(`but there is an outer parallelizable for loop`)} ${this.parallelizableOuterLoop.header.text} at line ${this.parallelizableOuterLoop.line}, column ${this.parallelizableOuterLoop.col}. Parallelizing the outermost loop is typically most beneficial for performance.\n`
+                body += `${chalk.yellow(`but there is an outer parallelizable for loop`)} ${this.parallelizableOuterLoop.header.text} at line ${this.parallelizableOuterLoop.line}, column ${this.parallelizableOuterLoop.col}. Parallelizing the outermost loop is typically most beneficial for performance.\n`;
             } 
             if (this.dangerousJumps.length > 0) {
                 body += `but the loop contains ${chalk.yellow('potentially dangerous jump statements')} which may cause the parallelized loop to behave unexpectedly.\n`;

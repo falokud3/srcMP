@@ -9,7 +9,7 @@ export type SupportedLanguages = 'cu' | 'hip' | 'cl';
  */
 export const cudaBuiltIns = [
     'gridDim', 'blockIdx', 'blockDim', 'threadIdx', 'warpSize'
-]
+];
 
 /**
  * Built in variables for the HIP programming model
@@ -18,7 +18,7 @@ export const cudaBuiltIns = [
  */
 export const hipBuiltIns =  [
     'gridDim', 'blockIdx', 'blockDim', 'threadIdx', 'warpSize'
-]
+];
 
 /**
  * Built in functions for OpenCL
@@ -27,5 +27,5 @@ export const hipBuiltIns =  [
  */
 export const openclBuiltIns = [
     'get_global_id', 'get_group_id', 'get_local_id', 'get_global_linear_id', ' get_local_linear_id'
-]
+];
 

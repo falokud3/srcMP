@@ -1,5 +1,5 @@
 
-import * as Xml from '../../common/Xml/Xml.js'
+import * as Xml from '../../common/Xml/Xml.js';
 import { ArrayAccess } from './ArrayAccess.js';
 import { ControlFlowGraph } from './ControlFlowGraph.js';
 
@@ -26,8 +26,8 @@ class SubscriptPair {
         const stmt2 = this.access2.parentStatement;
 
         if (stmt1.equals(stmt2)) {
-            return this.access1.getAccessType() == ArrayAccess.READ_ACCESS &&
-                this.access2.getAccessType() == ArrayAccess.WRITE_ACCESS;
+            return this.access1.getAccessType() === ArrayAccess.READ_ACCESS &&
+                this.access2.getAccessType() === ArrayAccess.WRITE_ACCESS;
         } else {
             //TODO: use caching system
             const cfg = ControlFlowGraph.buildControlFlowGraph(this.enclosingLoops[this.enclosingLoops.length - 1]);
@@ -75,4 +75,4 @@ class SubscriptPair {
     }
 }
 
-export {SubscriptPair}
+export {SubscriptPair};

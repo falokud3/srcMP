@@ -1,7 +1,7 @@
 
-import * as Xml from './Xml.js'
+import * as Xml from './Xml.js';
 
-import xpath, { isArrayOfNodes } from 'xpath';
+import xpath from 'xpath';
 
 
 /**
@@ -89,11 +89,12 @@ export default class XmlElement {
      * Returns the previous sibling element or null
      */
     public get prevElement() : XmlElement | null {
-        let curr: Node | null = this.domNode;
-        while (curr = curr.previousSibling) {
+        let curr: Node | null = this.domNode.previousSibling;
+        while (curr) {
             if (xpath.isElement(curr)) {
                 return new XmlElement(curr);
             }
+            curr = curr.previousSibling;
         }
         return null;
     }
@@ -102,11 +103,12 @@ export default class XmlElement {
      * Returns the next sibling element or null
      */
     public get nextElement() : XmlElement | null {
-        let curr: Node | null = this.domNode;
-        while (curr = curr.nextSibling) {
+        let curr: Node | null = this.domNode.nextSibling;
+        while (curr) {
             if (xpath.isElement(curr)) {
                 return new XmlElement(curr);
             }
+            curr = curr.nextSibling;
         }
         return null;
     }
@@ -136,7 +138,7 @@ export default class XmlElement {
     public find(xpathString: string, namespace: Record<string, string> = Xml.ns()) : XmlElement[] {
         // TODO: Experment with NS resolver to avoid xmlns: for everything
 
-        const namespaceSelect = xpath.useNamespaces(namespace)
+        const namespaceSelect = xpath.useNamespaces(namespace);
         const queryResult = namespaceSelect(xpathString, this.domNode, false);
 
 
@@ -171,7 +173,7 @@ export default class XmlElement {
      * @returns true if contains, false otherwise
      */
     public contains(xpathString: string, namespace: Record<string, string> = Xml.ns()) : boolean {
-        return this.get(xpathString, namespace) != null
+        return this.get(xpathString, namespace) !== null;
     }
 
     /**
@@ -181,7 +183,7 @@ export default class XmlElement {
      * @returns 
      */
     public containsName(xpathString: string, namespace: Record<string, string> = Xml.ns()) : boolean {
-        return this.find(`.//xmlns:name[text()='${xpathString}']`, namespace).length != 0;
+        return this.find(`.//xmlns:name[text()='${xpathString}']`, namespace).length !== 0;
     }
 
     public getAttribute(name: string) : string | null {
@@ -202,7 +204,7 @@ export default class XmlElement {
 
         if (!domParent) throw new Error("Cannot remove a node that doesn't have a parent element");
 
-        domParent.removeChild(this.domNode)
+        domParent.removeChild(this.domNode);
     }
 
     insertBefore(node: XmlElement | Node) : void {
@@ -234,12 +236,12 @@ export default class XmlElement {
             return func.at(-1)!;
         } else {
             const root = this.get("/xmlns:unit")!;
-            return root
+            return root;
         }
     }
 
     public toString() : string {
-        return this.domNode.toString();
+        return JSON.stringify(this.domNode);
     }
 
     /**
@@ -252,16 +254,16 @@ export default class XmlElement {
 
     public copy() : XmlElement {
         const cloneDoc = this.domNode.ownerDocument.cloneNode(true);
-        const attributes: string[] = []
+        const attributes: string[] = [];
         for (const attr of Array.from(this.domNode.attributes)) {
-            attributes.push(`@${attr.name} = '${attr.value}'`)
+            attributes.push(`@${attr.name} = '${attr.value}'`);
         }
-        //@ts-expect-error
-        const matches = (new XmlElement(cloneDoc['documentElement'])).find(`//${this.name.includes(':') ? this.name : 'xmlns:' + this.name}${attributes.length > 0 ? `[${attributes.join(' and ')}]` : ''}`)
+        //@ts-expect-error limitiation of xmldoc
+        const matches = (new XmlElement(cloneDoc['documentElement'])).find(`//${this.name.includes(':') ? this.name : 'xmlns:' + this.name}${attributes.length > 0 ? `[${attributes.join(' and ')}]` : ''}`);
 
         const copy = matches.find((element) => this.equals(element));
 
-        if (!copy) throw new Error('Copy Failed')
+        if (!copy) throw new Error('Copy Failed');
 
         return copy;
     }
@@ -302,7 +304,7 @@ export default class XmlElement {
     public get defSymbols() : Set<Xml.Element> {
         const ret = new Set<Xml.Element>();
         for (const name of this.defList) {
-            const innerName = name.get("./xmlns:name")
+            const innerName = name.get("./xmlns:name");
             ret.add(innerName ? innerName : name);
         }
         return ret;

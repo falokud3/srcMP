@@ -3,7 +3,6 @@ import { getCanonicalIndexVariable } from '../../common/Xml/ForLoop.js';
 import { getCanonicalIncrementValue } from '../../common/Xml/ForLoop.js';
 import * as Xml from '../../common/Xml/Xml.js';
 
-import * as CLO from '../../common/CommandLineOutput.js'
 import chalk from 'chalk';
 
 // TODO: Test
@@ -12,9 +11,9 @@ export function extractOutermostDependenceTestEligibleLoops(root: Xml.Element): 
 
    const ret: Xml.ForLoop[] = [];
 
-   let curr: Xml.ForLoop | undefined;
+   let curr: Xml.ForLoop | undefined = outerLoops.at(0);
    const messages: EligiblityMessage[] = [];
-   while (curr = outerLoops.at(0)) {
+   while (curr) {
       const nestedLoops = curr.find('descendant::xmlns:for') as Xml.ForLoop[];
       let loopIsEligibile: boolean, loopMessage: EligiblityMessage;
       [loopIsEligibile, loopMessage] = isLoopTestEligible(curr);
@@ -35,6 +34,7 @@ export function extractOutermostDependenceTestEligibleLoops(root: Xml.Element): 
          const nestedLoop = nestedLoops.at(0);
          if (nestedLoop) outerLoops.unshift(nestedLoop);
       }
+      curr = outerLoops.at(0);
    }
    
    return [ret, messages];
@@ -85,7 +85,7 @@ function isCanonicalLoop(loop: Xml.ForLoop, message?: EligiblityMessage): boolea
  * ! Note that != is not currently supported and returns false
  */
 function hasCanonicalCondition(loop: Xml.ForLoop, indexVariable: Xml.Element): boolean {
-   if (loop.condition.childElements.length != 1) return false;
+   if (loop.condition.childElements.length !== 1) return false;
 
    const conditionExpression = loop.condition.child(0)!;
 
@@ -94,7 +94,7 @@ function hasCanonicalCondition(loop: Xml.ForLoop, indexVariable: Xml.Element): b
    operators.filter((op: Xml.Element) => {
       return ["&lt;", "&gt;", "&lt;=", "&gt;="].includes(op.text);
    });
-   if (operators.length != 1) return false;
+   if (operators.length !== 1) return false;
 
    return Boolean(operators[0].prevElement?.text === indexVariable.text
       || operators[0].nextElement?.text === indexVariable.text);
@@ -225,7 +225,7 @@ export class EligiblityMessage implements CLIMessage {
       } else if (this.jumpStatements.length !== 0) {
          output += `The loop body has ${numFormat(this.jumpStatements.length, 'jump statement')}.`;
       } else if (this.loop.find('.//xmlns:label').length !== 0) {
-         output += `The loop body has ${numFormat(this.loop.find('.//xmlns:label').length, 'label statement')}.`
+         output += `The loop body has ${numFormat(this.loop.find('.//xmlns:label').length, 'label statement')}.`;
       } else if (this.containsMethodCall) {
          output += `The loop body has ${numFormat(this.loop.find('.//xmlns:call').length,'unparallelizable method call')}.`;
       } else {
@@ -243,11 +243,11 @@ export class EligiblityMessage implements CLIMessage {
       let body = `The for loop ${this.loop.header.text} at line ${this.loop.line}, column ${this.loop.col} is not eligible for data dependence testing\n\n`;
       let issues = 0;
       if (!this.indexVariable) {
-         body += `${errorStart(issues++)} the loop\'s index variable could not be determined.\n`;
+         body += `${errorStart(issues++)} the loop's index variable could not be determined.\n`;
       }
 
       if (this.indexVariable && typeof this.incrementValue !== 'number') {
-         body += `${errorStart(issues++)} value of the loop's increment could not be determined from the expression \u201C${this.loop.increment.text}\u201D.\n`
+         body += `${errorStart(issues++)} value of the loop's increment could not be determined from the expression \u201C${this.loop.increment.text}\u201D.\n`;
       }
 
       if (this.indexVariable && !this.hasCanonicalCondition) {
@@ -256,7 +256,7 @@ export class EligiblityMessage implements CLIMessage {
       
       const ivDefs = this.indexVariableRedefinitions.map((redef: Xml.Element) => redef.parentElement ?? redef);
       if (this.indexVariable && ivDefs.length !== 0) {
-         body += `${errorStart(issues++)} loop redefines the index variable ${numFormat(ivDefs.length, 'time')}. For example:\n`
+         body += `${errorStart(issues++)} loop redefines the index variable ${numFormat(ivDefs.length, 'time')}. For example:\n`;
          body += examples(ivDefs) + '\n';
       }
 
@@ -268,7 +268,7 @@ export class EligiblityMessage implements CLIMessage {
 
       const labels = this.loop.find('.//xmlns:label');
       if (labels.length !== 0) {
-         body += `${errorStart(issues++)} loop body has ${numFormat(labels.length, 'label statements')}. For example:\n`
+         body += `${errorStart(issues++)} loop body has ${numFormat(labels.length, 'label statements')}. For example:\n`;
          body += examples(labels) + '\n';
       }
 
@@ -309,9 +309,9 @@ export class EligiblityMessage implements CLIMessage {
 
       const header = chalk.green(`++ TESTABLE FOR LOOP ++${padding} ${filename}`);
       let body = `The for loop ${this.loop.header.text} is elligible for data dependence testing.\n`;
-      body += `Initialization: ${this.indexVariable!.parentElement!.text}\n`
-      body += `Condition: ${this.loop.condition.text}\n`
-      body += `Increment Value: ${this.incrementValue}`
+      body += `Initialization: ${this.indexVariable!.parentElement!.text}\n`;
+      body += `Condition: ${this.loop.condition.text}\n`;
+      body += `Increment Value: ${this.incrementValue}`;
       const footer = chalk.green(`${'+'.repeat(80)}`);
 
       return `${header}
