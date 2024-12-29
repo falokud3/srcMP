@@ -96,11 +96,11 @@ export class ControlFlowGraph {
         return buildGraph(src);
     }
 
-    private substituteAll(src: Xml.Element) : Xml.Element {
-        throw new Error("NOT IMPLEMEnteD");
-    }
+    // private substituteAll(src: Xml.Element) : Xml.Element {
+    //     throw new Error("NOT IMPLEMEnteD");
+    // }
 
-    public getRangeMap(node: Xml.Element) : Map<string, RangeDomain> {
+    public getRangeMap() : Map<string, RangeDomain> {
         const ret = new Map<string, RangeDomain>();
 
         for (const node of this.nodes) {

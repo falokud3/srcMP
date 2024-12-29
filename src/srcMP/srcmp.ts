@@ -1,11 +1,11 @@
 #!/usr/bin/env node
 import * as Xml from '../common/Xml/Xml.js';
-// import * as DDT from './DataDependenceTesting/DataDependenceTestingPass.js';
+import * as DDT from './DataDependenceTesting/DataDependenceTestingPass.js';
 
 import { Command } from 'commander';
 import { execSync } from 'child_process';
 import { Verbosity, setVerbosity } from '../common/CommandLineOutput.js';
-import { getRanges } from './DataDependenceTesting/RangeAnalysis.js';
+// import { getRanges } from './DataDependenceTesting/RangeAnalysis.js';
 // import { writeFile } from 'fs';
 // import { ControlFlowGraph } from './DataDependenceTesting/ControlFlowGraph.js';
 
@@ -13,21 +13,21 @@ function runCompiler(program: Xml.Element) : Xml.Element {
     Xml.setNamespaces(program);
 
     setVerbosity(Verbosity.Silent);
-    // const programDDG = DDT.run(program);
+    DDT.run(program);
 
-    getRanges(program.get('.//xmlns:function')!);
+    // getRanges(program.get('.//xmlns:function')!);
     // PLD.run(program, programDDG);  //
     // TODO: OUTPUT srcml option
     return program;
 }
 
-function outputFile(content: Xml.Element, inputFilePath: string) {
-    const index = Math.max(inputFilePath.lastIndexOf('/'), 0);
-    // const filePath = `${inputFilePath.substring(0, index + 1)}srcmp_${inputFilePath.substring(index + 1)}`;
+// function outputFile(content: Xml.Element, inputFilePath: string) {
+//     const index = Math.max(inputFilePath.lastIndexOf('/'), 0);
+//     // const filePath = `${inputFilePath.substring(0, index + 1)}srcmp_${inputFilePath.substring(index + 1)}`;
 
-    // writeFile(filePath, content.text, (err) => {if (err) console.error("ERROR")}); // TODO: ERROR
+//     // writeFile(filePath, content.text, (err) => {if (err) console.error("ERROR")}); // TODO: ERROR
 
-}
+// }
 
 /**
  * Converts file contents to an Xml Object
@@ -63,8 +63,9 @@ function main() : number {
     program.parse();
 
     for (const inputFile of program.args[0].split(' ').filter((arg) => arg.length > 0)) {
+        runCompiler(getFileXml(inputFile));
         // try {
-            outputFile(runCompiler(getFileXml(inputFile)), inputFile);
+            // outputFile(runCompiler(getFileXml(inputFile)), inputFile);
         // } catch (error) {
             // console.error(inputFile + ": " + error.message + "(" + error.name + ")");
         // }

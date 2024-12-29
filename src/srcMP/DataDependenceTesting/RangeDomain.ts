@@ -193,9 +193,9 @@ export class RangeDomain {
             if (!this.ranges.has(range[0])) this.setRange(range[1]);
         }
 
-        for (const range of this.ranges) {
-            const newRange = Range.intersectRanges(range[1], other.getRange(range[0]));
-        }
+        // for (const range of this.ranges) {
+        //     const newRange = Range.intersectRanges(range[1], other.getRange(range[0]));
+        // }
     }
 
     public static widenRange(rd: RangeDomain, e?: Range, widen?: Range) : Range {

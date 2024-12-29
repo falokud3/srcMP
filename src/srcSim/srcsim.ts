@@ -150,31 +150,31 @@ function divergenceTest(xml: Xml.Element, depth: number = 0, before?: Point) : b
     return false;
 }
 
-function calculateDivergenceCoverage(func: Xml.Element) {
-    const ifs = func.find('.//xmlns:if');
-    const divergentIfs: Xml.Element[] = [];
-    for (const ifXml of ifs) {
-        if (verbose) console.log(`[DivergenceTesting] Testing if at line ${ifXml.line}`);
-        if (divergenceTest(ifXml.get('xmlns:condition')!)) {
-            if (verbose) console.log(chalk.red(`*Potential divergence detected*`));
-            divergentIfs.push(ifXml);
-        }
-    }
+// function calculateDivergenceCoverage(func: Xml.Element) {
+//     const ifs = func.find('.//xmlns:if');
+//     const divergentIfs: Xml.Element[] = [];
+//     for (const ifXml of ifs) {
+//         if (verbose) console.log(`[DivergenceTesting] Testing if at line ${ifXml.line}`);
+//         if (divergenceTest(ifXml.get('xmlns:condition')!)) {
+//             if (verbose) console.log(chalk.red(`*Potential divergence detected*`));
+//             divergentIfs.push(ifXml);
+//         }
+//     }
 
-    const divergentCoverage = divergentIfs.map((ifXml) => {
-        const block = ifXml.get('xmlns:block')!;
-        const startLine = Number(block.getAttribute('pos:start')!.split(':')[0]);
-        const endLine = Number(block.getAttribute('pos:end')!.split(':')[0]);
-        return endLine - startLine - ifXml.emptyLines + 1;
-    }).reduce((sum, curr) => sum + curr, 0);
+//     const divergentCoverage = divergentIfs.map((ifXml) => {
+//         const block = ifXml.get('xmlns:block')!;
+//         const startLine = Number(block.getAttribute('pos:start')!.split(':')[0]);
+//         const endLine = Number(block.getAttribute('pos:end')!.split(':')[0]);
+//         return endLine - startLine - ifXml.emptyLines + 1;
+//     }).reduce((sum, curr) => sum + curr, 0);
 
-    const block = func.get('xmlns:block')!;
-    const startLine = Number(block.getAttribute('pos:start')!.split(':')[0]);
-    const endLine = Number(block.getAttribute('pos:end')!.split(':')[0]);
-    const metric = (divergentCoverage / (endLine - startLine - block.emptyLines + 1)) * 100;
+//     const block = func.get('xmlns:block')!;
+//     const startLine = Number(block.getAttribute('pos:start')!.split(':')[0]);
+//     const endLine = Number(block.getAttribute('pos:end')!.split(':')[0]);
+//     const metric = (divergentCoverage / (endLine - startLine - block.emptyLines + 1)) * 100;
 
-    console.log(`Divergent Coverage: ${metric.toPrecision(4)}%`);
-}
+//     console.log(`Divergent Coverage: ${metric.toPrecision(4)}%`);
+// }
 
 function estimateClockCycles(xml: Xml.Element, device: Device) : [number, number, number] {
     let min = 0;
@@ -233,7 +233,7 @@ function getKernelFunctions(program: Xml.Element, language: ParallelProgrammingI
     } else if (language === 'cl') {
         return program.find(`.//xmlns:function[xmlns:type/xmlns:name[text()='__kernel']]`);
     } else {
-        console.error(chalk.yellow(`Kernel function syntax for file extension "${language}" not found. Defaulting to cuda's kernel function syntax.`));
+        console.error(chalk.yellow(`Kernel function syntax for file extension "${String(language)}" not found. Defaulting to cuda's kernel function syntax.`));
         return program.find(`.//xmlns:function[xmlns:type/xmlns:name[text()='__global__']]`);
     }
 }
@@ -298,8 +298,8 @@ function parseDevices(filePaths: string[]) : Device[] {
         min: number;
         max: number;
     };
-    const setDefault = (filePath: string, device: Device, member: string, type: string, defaultValue: string | number | boolean | op) => {
-        //@ts-expect-error - using indexing code smell to avoid repetition in code
+
+    const setDefault = (filePath: string, device: Device, member: keyof Device, type: string, defaultValue: string | number | boolean | op) => {
         const value = device[member];
         if (value === undefined) {
             //@ts-expect-error - same as above
@@ -313,7 +313,7 @@ function parseDevices(filePaths: string[]) : Device[] {
     };
     const devices: Device[] = [];
     for (const filePath of filePaths) {
-        const device: Device = JSON.parse(readFileSync(filePath).toString());
+        const device: Device = JSON.parse(readFileSync(filePath).toString()) as Device;
         if (device.name === undefined) {
             device.name = `Device${devices.length + 1}`;
             console.log(chalk.yellow(`${filePath} Device name not found, defaulting to ${device.name}.`));
@@ -321,7 +321,7 @@ function parseDevices(filePaths: string[]) : Device[] {
         setDefault(filePath, device, 'name', 'string', `Device${devices.length + 1}`);
         setDefault(filePath, device, 'clockFrequency', 'number', 750);
         setDefault(filePath, device, 'affectedByDivergence', 'boolean', true);
-        setDefault(filePath, device, 'ops', 'object', {default: {min:6, max: 6}});
+        setDefault(filePath, device, 'ops', 'object', {min:6, max: 6});
 
         if (device.ops.default === undefined) {
             device.ops.default = {min: 6, max: 6};
@@ -360,7 +360,7 @@ function main() : number {
         return 1;
     }
 
-    verbose = options.verbose;
+    verbose = Boolean(options.verbose);
     
     for (const inputFile of program.args) {
         console.log(`-- ${inputFile.substring(inputFile.lastIndexOf('/'))} --`);

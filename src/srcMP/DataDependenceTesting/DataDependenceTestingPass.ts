@@ -218,11 +218,9 @@ function testZIV(pair: SubscriptPair, pairDependenceVectors: DependenceVector[])
    return false; 
 }
 
-function testSIV(pair: SubscriptPair, pairDependenceVectors: DependenceVector[]) : boolean {
-   throw new Error("Not Yet Implemented");
-
-
-}
+// function testSIV(pair: SubscriptPair, pairDependenceVectors: DependenceVector[]) : boolean {
+//    throw new Error("Not Yet Implemented");
+// }
 
 // test MIV
 function testMIV(pair: SubscriptPair, pairDependenceVectors: DependenceVector[]) : boolean {

@@ -21,7 +21,7 @@ class RangeTest {
 
     public testDependence(dv: DependenceVector) : boolean {
         const ret: boolean = true;
-        
+        dv.toString();
         return ret;
     }
 

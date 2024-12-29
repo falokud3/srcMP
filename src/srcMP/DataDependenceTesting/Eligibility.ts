@@ -15,8 +15,9 @@ export function extractOutermostDependenceTestEligibleLoops(root: Xml.Element): 
    const messages: EligiblityMessage[] = [];
    while (curr) {
       const nestedLoops = curr.find('descendant::xmlns:for') as Xml.ForLoop[];
-      let loopIsEligibile: boolean, loopMessage: EligiblityMessage;
-      [loopIsEligibile, loopMessage] = isLoopTestEligible(curr);
+      const loopRet = isLoopTestEligible(curr);
+      let loopIsEligibile = loopRet[0];
+      const loopMessage: EligiblityMessage = loopRet[1];
       for (const nestedLoop of nestedLoops) {
          const nestedLoopIsEligible = isLoopTestEligible(nestedLoop)[0];
          if (!nestedLoopIsEligible) {
@@ -147,9 +148,10 @@ function hasCanonicalBody(loop: Xml.ForLoop, indexVariable: Xml.Element): boolea
          prevCond = ["++", "--"].includes(instance.prevElement.text);
       }
 
+      const text = instance.nextElement?.text ?? '';
       if (instance.nextElement) {
          nextCond = ["++", "--"].includes(instance.nextElement?.text)
-            || [...instance.nextElement?.text].filter((char) => char === '=').length === 1;
+            || [...text].filter((char) => char === '=').length === 1;
       }
       return prevCond || nextCond;
    });

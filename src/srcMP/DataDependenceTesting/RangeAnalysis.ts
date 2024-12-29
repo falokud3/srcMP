@@ -23,7 +23,7 @@ export function getRanges(root: Xml.Element) : Map<string, RangeDomain> {
     // iterateToFixpoint(cfg, false);
 
     // TODO: FILTER UNSAFE RANGES
-    return cfg.getRangeMap(root);
+    return cfg.getRangeMap();
 
 }
 
@@ -117,7 +117,7 @@ function updateRanges(node: CFNode) : void {
     processIncrements('POST', node);
 }
 
-function updateAssignment(node: CFNode, expression?: string) : void {
+function updateAssignment(node: CFNode) : void {
     type AssignmentDirection = "normal" | "nochange" | "kill" | "recurrence" 
         | "invertible";
 
@@ -148,6 +148,7 @@ function updateAssignment(node: CFNode, expression?: string) : void {
         const buffer = execSync(`srcml --language ${language} --text "${rhsString}"`, {timeout: 10000});
 
         const rhsRoot = Xml.parseXmlString(buffer.toString());
+        rhsRoot.toString();
 
         from = expr.copy();
         const kiddos = Array.from(from.domNode.childNodes);
@@ -227,6 +228,7 @@ function updateAssignment(node: CFNode, expression?: string) : void {
 }
 
 function updateSwtich(node: CFNode) : void {
+    throw new Error("Unimplented: " + node.toString());
     // TODO: update unsafeNode if it contains a side effect
 
     // // extract range from each case condtion == case value
@@ -258,7 +260,7 @@ function updateSwtich(node: CFNode) : void {
 }
 
 function updateCondtion(node: CFNode) : void {
-    // throw new Error("UNIMPLEMENTED")
+    throw new Error("UNIMPLEMENTED" + node.toString());
 }
 
 function updateSafeNode(node: CFNode) : void {

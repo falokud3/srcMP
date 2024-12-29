@@ -36,6 +36,7 @@ export function simplify(expression: string)  {
 }
 
 export function safeSimplify(expression: string) {
+    /* eslint-disable */ // ignore unnecessary escape character errors for regex
     expression = expression.replace(/([\w\*\&\[\]\.\(\)]+)\s*\+\+/gm, '$1');
     expression = expression.replace(/\+\+\s*([\w\*\&\[\]\.\(\)]+)/gm, '$1');
     expression = expression.replace(/([\w\*\&\[\]\.\(\)]+)\s*--/gm, '$1');
