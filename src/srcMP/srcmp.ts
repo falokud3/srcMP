@@ -1,78 +1,99 @@
 #!/usr/bin/env node
 import * as Xml from '../common/Xml/Xml.js';
+import * as CLO from '../common/CommandLineOutput.js';
 import * as DDT from './DataDependenceTesting/DataDependenceTestingPass.js';
+import * as PLD from './ParallelizableLoopDetection/ParallelizableLoopDetectionPass.js';
 
 import { Command } from 'commander';
-import { execSync } from 'child_process';
 import { Verbosity, setVerbosity } from '../common/CommandLineOutput.js';
-// import { getRanges } from './DataDependenceTesting/RangeAnalysis.js';
-// import { writeFile } from 'fs';
-// import { ControlFlowGraph } from './DataDependenceTesting/ControlFlowGraph.js';
+import { writeFileSync } from 'fs';
+import { getFileXml } from '../common/srcml.js';
 
 function runCompiler(program: Xml.Element) : Xml.Element {
-    Xml.setNamespaces(program);
-
-    setVerbosity(Verbosity.Silent);
-    DDT.run(program);
-
-    // getRanges(program.get('.//xmlns:function')!);
-    // PLD.run(program, programDDG);  //
-    // TODO: OUTPUT srcml option
+    CLO.log('LOG');
+    CLO.warn('WARN');
+    CLO.error('ERROR');
     return program;
+    // Xml.setNamespaces(program);
+
+    // const programDDG = DDT.run(program);
+    // PLD.run(program, programDDG);  //
+
+    // return program;
 }
 
-// function outputFile(content: Xml.Element, inputFilePath: string) {
-//     const index = Math.max(inputFilePath.lastIndexOf('/'), 0);
-//     // const filePath = `${inputFilePath.substring(0, index + 1)}srcmp_${inputFilePath.substring(index + 1)}`;
-
-//     // writeFile(filePath, content.text, (err) => {if (err) console.error("ERROR")}); // TODO: ERROR
-
-// }
-
 /**
- * Converts file contents to an Xml Object
- * * Program assumes that .xml files passed to program are srcml applied to one file
- * @param srcPath the path to the file as a string
- * @returns an xml object representing the file contents
+ * Parsing the verboisty command line argument and setting the global verbosity value
+ * @param value the command argument passed in
+ * @param previous unused
  */
-function getFileXml(srcPath: string) : Xml.Element {
-    
-    //TODO: Create SRCML interface for whole project to use
-    const fileExtension = srcPath.substring(srcPath.lastIndexOf("."));
-    
-    if (fileExtension !== ".xml") {
-        const buffer = execSync(`srcml --position ${srcPath}`, {timeout: 10000, maxBuffer: 1024 * 1024 * 10});
-        return Xml.parseXmlString(buffer.toString());
+/* eslint-disable-next-line @typescript-eslint/no-unused-vars*/ // previous is unused but mandatory to match library's function signature
+function parseVerbosity(value: string, previous: number) : number {
+    const num = Number(value);
+    let verbosity: Verbosity = Verbosity.Simple;
+    const isValidVerbosityNumber = (x: number): x is Verbosity => {
+        return x in Object.values(Verbosity);
+    };
+    if (!isNaN(num) && isValidVerbosityNumber(num)) {
+        verbosity = num;
     } else {
-        return Xml.parseXmlFile(srcPath);
+        CLO.warn(`Invalid verbosity input, defaulting to ${verbosity}`);
     }
+    setVerbosity(verbosity);
+    return verbosity;
 }
 
 /**
- * Handles command line args and begins compiler run
- * @returns exit code
+ * Generates the output file
+ * @param inputFilePath the input file for the compilation
+ * @param outputFilePath if supplied, the output file path to write to 
+ * @param node the XML to write to the file
+ * @param outputXml True to output as a .xml file, false to output as a source code file
+ */
+function printFile(inputFilePath: string, outputFilePath: string | undefined, node: Xml.Element, outputXml: boolean) {
+    let outputFile: string = '';
+    if (outputFilePath) {
+        outputFile = outputFilePath;
+    } else {
+        const dirIndex = inputFilePath.lastIndexOf('/');
+        const path = dirIndex !== -1 ? inputFilePath.substring(0, dirIndex + 1) : '';
+        const fileName = inputFilePath.substring(dirIndex + 1);
+        outputFile = `${path}mp_${fileName}`;
+    }
+    if (outputXml && inputFilePath.substring(inputFilePath.length - 4) !== '.xml') outputFile += '.xml';
+    writeFileSync(outputFile, outputXml ? node.toString() : node.text);
+}
+
+/**
+ * Program entry point
  */
 function main() : number {
     const program = new Command();
-
     program.name('src-cetus')
         .description('A srcML based optimizing compiler')
         .version('0.0.1')
-        .argument('<input-files...>', 'The files to be compiled');
-
+        .argument('<input-files...>', 'The files to be compiled.')
+        .option('-o, --output <output-files...>', 'The paths of the output files. If none is supplied, the default naming convention is mp_<input_file>')
+        .option('-v, --verbosity <number>', `Controls the verbosity level. ${JSON.stringify(Verbosity)}`, parseVerbosity, Verbosity.Simple)
+        .option('--noEmit', 'Disable emitting files from a compilation.', false)
+        .option('--xml', 'Output an srcML formatted XML file instead of source code.', false);
     program.parse();
+    const options = program.opts();
+    const outputFiles = (options.output ?? []) as string[];
+    const noEmit = options.noEmit as boolean;
+    const outputXml = options.xml as boolean;
 
-    for (const inputFile of program.args[0].split(' ').filter((arg) => arg.length > 0)) {
-        runCompiler(getFileXml(inputFile));
-        // try {
-            // outputFile(runCompiler(getFileXml(inputFile)), inputFile);
-        // } catch (error) {
-            // console.error(inputFile + ": " + error.message + "(" + error.name + ")");
-        // }
+    for (let i = 0; i < program.args.length; i++) {
+        const inputFile = program.args[i];
+        try {
+            const compiledCode = runCompiler(getFileXml(inputFile));
+            if (noEmit) continue;
+            printFile(inputFile, outputFiles[i], compiledCode, outputXml);
+        } catch (error) {
+            CLO.error(`Error compiling ${inputFile}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        }
     }
-
     return 0;
 }
-
 
 main();

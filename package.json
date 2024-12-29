@@ -11,8 +11,8 @@
     "test": "tests"
   },
   "bin": {
-    "srcmp": "./build/bin/srcmp.js",
-    "srcsim": "./build/bin/srcsim.js"
+    "srcmp": "./build/bin/srcmp.cjs",
+    "srcsim": "./build/bin/srcsim.cjs"
   },
   "contributes": {
     "commands": [
@@ -24,7 +24,7 @@
   },
   "scripts": {
     "vscode:prepublish": "npm run package",
-    "compile": "npm run check-types && npm run lint ; node esbuild.js",
+    "compile": "npm run check-types && (npm run lint ; node esbuild.js)",
     "watch": "npx npm-run-all -p watch:*",
     "watch:esbuild": "node esbuild.js --watch",
     "watch:esbuild-ext": "node esbuild.js --extension --watch",

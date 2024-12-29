@@ -241,7 +241,9 @@ export default class XmlElement {
     }
 
     public toString() : string {
-        return JSON.stringify(this.domNode);
+        // TODO: fix typing
+        return String(this.domNode);
+        // return JSON.stringify(this.domNode);
     }
 
     /**

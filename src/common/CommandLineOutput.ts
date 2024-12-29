@@ -1,5 +1,6 @@
 // import chalk from 'chalk';
 import wrapAnsi from 'wrap-ansi';
+import chalk from "chalk";
 import * as Xml from './Xml/Xml.js';
 
 export interface CLIMessage  {
@@ -20,6 +21,20 @@ export function output(...messages: CLIMessage[]) {
         const cliOutput = wrapAnsi(message.format(verbositySetting), 80, {hard: true});
         if (cliOutput.length !== 0) console.log(`${cliOutput}`);
     }
+}
+
+export function log(message: string) {
+    if (verbositySetting === Verbosity.Silent) return;
+    console.log(wrapAnsi(message, 80, {hard: true}));
+}
+
+export function warn(message: string) {
+    if (verbositySetting === Verbosity.Silent) return;
+    console.warn(wrapAnsi(chalk.yellow(message), 80, {hard: true}));
+}
+
+export function error(message: string) {
+    console.warn(wrapAnsi(chalk.red(message), 80, {hard: true}));
 }
 
 export const Verbosity = {
