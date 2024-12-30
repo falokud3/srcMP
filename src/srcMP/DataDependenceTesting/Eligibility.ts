@@ -215,7 +215,7 @@ export class EligiblityMessage implements CLIMessage {
    }
 
    public get simpleFormat() : string {
-      let output = `${this.loop.line}:${this.loop.col}| for${this.loop.header.text} ${chalk.red('Test Inelligible')}: `;
+      let output = `${chalk.red('DDT Inelligible')}: ${this.loop.line}:${this.loop.col}|${this.loop.header.text} `;
       if (!this.indexVariable) {
          output += 'Could not determine the loop\'s index variable.';
       } else if (typeof this.incrementValue !== 'number') {
@@ -230,19 +230,17 @@ export class EligiblityMessage implements CLIMessage {
          output += `The loop body has ${numFormat(this.loop.find('.//xmlns:label').length, 'label statement')}.`;
       } else if (this.containsMethodCall) {
          output += `The loop body has ${numFormat(this.loop.find('.//xmlns:call').length,'unparallelizable method call')}.`;
+      } else if (this.nestedInelligibleLoop) {
+            output += `Nested loop at ${this.nestedInelligibleLoop.line}:${this.nestedInelligibleLoop.col} is ineligible.`;
       } else {
-         if (this.nestedInelligibleLoop) {
-            output += `A loop nested within this loop at line ${this.nestedInelligibleLoop.line}, col ${this.nestedInelligibleLoop.col} is ineligible.`;
-         } else {
             output = '';
-         }
       }
       return output;
    }
 
    public buildComplexBody() : string {
 
-      let body = `The for loop ${this.loop.header.text} at line ${this.loop.line}, column ${this.loop.col} is not eligible for data dependence testing\n\n`;
+      let body = `${chalk.red('Data Dependence Test Inelligible')}: ${this.loop.line}:${this.loop.col}|${this.loop.header.text}\n`;
       let issues = 0;
       if (!this.indexVariable) {
          body += `${errorStart(issues++)} the loop's index variable could not be determined.\n`;
@@ -259,25 +257,25 @@ export class EligiblityMessage implements CLIMessage {
       const ivDefs = this.indexVariableRedefinitions.map((redef: Xml.Element) => redef.parentElement ?? redef);
       if (this.indexVariable && ivDefs.length !== 0) {
          body += `${errorStart(issues++)} loop redefines the index variable ${numFormat(ivDefs.length, 'time')}. For example:\n`;
-         body += examples(ivDefs) + '\n';
+         body += examples(ivDefs);
       }
 
       const jumps = this.jumpStatements;
       if (jumps.length !== 0) {
          body += `${errorStart(issues++)} loop body has ${numFormat(jumps.length, 'jump statement')}. For example:\n`;
-         body += examples(jumps) + '\n';
+         body += examples(jumps);
       }
 
       const labels = this.loop.find('.//xmlns:label');
       if (labels.length !== 0) {
-         body += `${errorStart(issues++)} loop body has ${numFormat(labels.length, 'label statements')}. For example:\n`;
-         body += examples(labels) + '\n';
+         body += `${errorStart(issues++)} loop body has ${numFormat(labels.length, 'label statement')}. For example:\n`;
+         body += examples(labels);
       }
 
       const calls = this.loop.find('.//xmlns:call');
       if (calls.length > 0) {
          body += `${errorStart(issues++)} loop body has ${numFormat(calls.length,'unparallelizable method call')}.\n`;
-         body += examples(calls) + '\n';
+         body += examples(calls);
       }
 
       if (this.nestedInelligibleLoop) {
@@ -287,45 +285,18 @@ export class EligiblityMessage implements CLIMessage {
       return body.substring(0, body.length - 1); // eliminates trailing \n
    }
 
-   public get complexFormat() : string {
-      if (this.eligible) return '';
-
-      const filename = this.loop.get('/xmlns:unit')?.getAttribute('filename') ?? '';
-      
-      const paddingLength = 80 - (25 + 1 + filename.length);
-      const padding = '-'.repeat(paddingLength > 0 ? paddingLength : 0);
-
-      const header = chalk.red(`-- UNTESTABLE FOR LOOP --${padding} ${filename}`);
-      const body = this.buildComplexBody();
-      const footer = chalk.red(`-`.repeat(80));
-
-      return `${header}\n${body}\n${footer}`;
-   }
-
    public get internalFormat() : string {
-      if (!this.eligible) return this.complexFormat;
-      const filename = this.loop.get('/xmlns:unit')?.getAttribute('filename') ?? '';
-      
-      const paddingLength = 80 - (23 + 1 + filename.length);
-      const padding = '+'.repeat(paddingLength > 0 ? paddingLength : 0);
+      if (this.eligible) {
+         return `${chalk.green('Data Dependence Test Eligible')}: ${this.loop.line}:${this.loop.col}|${this.loop.header.text}
+Init: ${this.indexVariable!.parentElement!.text} Cond: ${this.loop.condition.text} Step: ${this.incrementValue}`;
+      }
 
-      const header = chalk.green(`++ TESTABLE FOR LOOP ++${padding} ${filename}`);
-      let body = `The for loop ${this.loop.header.text} is elligible for data dependence testing.\n`;
-      body += `Initialization: ${this.indexVariable!.parentElement!.text}\n`;
-      body += `Condition: ${this.loop.condition.text}\n`;
-      body += `Increment Value: ${this.incrementValue}`;
-      const footer = chalk.green(`${'+'.repeat(80)}`);
-
-      return `${header}
-${body}
-${footer}`;
+      return `${this.buildComplexBody()}`;
    }
 
    format(verbosity: Verbosity) : string {
-      if (verbosity === Verbosity.Simple) {
+      if (verbosity === Verbosity.Basic) {
          return this.simpleFormat;
-      } else if (verbosity === Verbosity.Complex) {
-         return this.complexFormat;
       } else if (verbosity === Verbosity.Internal) {
          return this.internalFormat;
       } else {
@@ -333,5 +304,4 @@ ${footer}`;
       }
    }
 
-   
 }

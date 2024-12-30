@@ -241,7 +241,7 @@ export default class XmlElement {
     }
 
     public toString() : string {
-        // TODO: fix typing
+        /* eslint-disable-next-line @typescript-eslint/no-base-to-string*/ // while the DOM API does not have a toString, the @xmldom/xmldom implementation does
         return String(this.domNode);
         // return JSON.stringify(this.domNode);
     }

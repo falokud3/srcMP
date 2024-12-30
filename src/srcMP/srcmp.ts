@@ -10,16 +10,12 @@ import { writeFileSync } from 'fs';
 import { getFileXml } from '../common/srcml.js';
 
 function runCompiler(program: Xml.Element) : Xml.Element {
-    CLO.log('LOG');
-    CLO.warn('WARN');
-    CLO.error('ERROR');
+    Xml.setNamespaces(program);
+
+    const programDDG = DDT.run(program);
+    PLD.run(program, programDDG);  //
+
     return program;
-    // Xml.setNamespaces(program);
-
-    // const programDDG = DDT.run(program);
-    // PLD.run(program, programDDG);  //
-
-    // return program;
 }
 
 /**
@@ -30,7 +26,7 @@ function runCompiler(program: Xml.Element) : Xml.Element {
 /* eslint-disable-next-line @typescript-eslint/no-unused-vars*/ // previous is unused but mandatory to match library's function signature
 function parseVerbosity(value: string, previous: number) : number {
     const num = Number(value);
-    let verbosity: Verbosity = Verbosity.Simple;
+    let verbosity: Verbosity = Verbosity.Basic;
     const isValidVerbosityNumber = (x: number): x is Verbosity => {
         return x in Object.values(Verbosity);
     };
@@ -74,7 +70,7 @@ function main() : number {
         .version('0.0.1')
         .argument('<input-files...>', 'The files to be compiled.')
         .option('-o, --output <output-files...>', 'The paths of the output files. If none is supplied, the default naming convention is mp_<input_file>')
-        .option('-v, --verbosity <number>', `Controls the verbosity level. ${JSON.stringify(Verbosity)}`, parseVerbosity, Verbosity.Simple)
+        .option('-v, --verbosity <number>', `Controls the verbosity level. ${JSON.stringify(Verbosity)}`, parseVerbosity, Verbosity.Basic)
         .option('--noEmit', 'Disable emitting files from a compilation.', false)
         .option('--xml', 'Output an srcML formatted XML file instead of source code.', false);
     program.parse();

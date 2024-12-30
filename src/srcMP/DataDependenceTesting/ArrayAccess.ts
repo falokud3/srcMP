@@ -50,10 +50,7 @@ export class ArrayAccess {
     // mayble: get loop nest of enclosing list
 
     public toString(): string {
-        let ret: string = "[Array Access] ";
-        ret += "Access Expression: " + this.access.text + " ";
-        ret += "Access Type: " + (this.access_type === ArrayAccess.WRITE_ACCESS ? "Write" : "Read") + " ";
-        return ret;
+        return `"${this.access.text}" (${(this.access_type === ArrayAccess.WRITE_ACCESS ? "Write" : "Read")})`;
     }
 
 }

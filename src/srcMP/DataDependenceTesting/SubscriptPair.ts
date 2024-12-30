@@ -68,10 +68,7 @@ class SubscriptPair {
     }
 
     public toString() : string {
-        let ret: string = '[SubscriptPair] ';
-        ret += "Sub1: " + this.subscript1.text + " ";
-        ret += "Sub2: " + this.subscript2.text;
-        return ret;
+        return `(${this.subscript1.text} ${this.subscript2.text})`;
     }
 }
 

@@ -1,52 +1,35 @@
 // Data Dependence Test Framework
 import * as Xml from '../../common/Xml/Xml.js';
+import * as ComputerAlgebraSystem from '../../common/ComputerAlgebraSystem.js';
+import * as CLO from '../../common/CommandLineOutput.js';
 
 import { ArrayAccess } from './ArrayAccess.js';
 import { DependenceVector, DependenceDir, mergeVectorSets } from './DependenceVector.js';
 import { SubscriptPair } from './SubscriptPair.js';
-
-import { RangeTest } from './RangeTest.js';
 import { BanerjeeTest } from './BanerjeeTest.js';
 import { Arc, DataDependenceGraph as DDGraph } from './DataDependenceGraph.js';
-// import * as AliasAnalysis from './AliasAnalysis.js';
-// import * as RangeAnalysis from './RangeAnalysis.js';
 import { extractOutermostDependenceTestEligibleLoops } from './Eligibility.js';
-
-import * as ComputerAlgebraSystem from '../../common/ComputerAlgebraSystem.js';
 import { Verbosity } from '../../common/CommandLineOutput.js';
-import * as CLO from '../../common/CommandLineOutput.js';
-
 
 export function run(program: Xml.Element) : DDGraph {
    const startTime = performance.now();
-   CLO.output({format: (verbosity: Verbosity) => {
-      if (verbosity !== Verbosity.Internal) return '';
-      return '[Data Dependence Pass] Start';
-   }});
-
+   CLO.log('[Data Dependence Pass] Start', Verbosity.Internal);
    const ddg = new DDGraph();
-
-   // AliasAnalysis.run();
 
    const [loops, messages] = extractOutermostDependenceTestEligibleLoops(program);
 
    CLO.output(...messages);
    
    loops.forEach((loop) => {
+      CLO.log(`\nTesting ${loop.line}:${loop.col}|${loop.header.text}`, Verbosity.Internal);
       ddg.addAllArcs(analyzeLoopForDependence(loop));
    });
 
    const endTime = performance.now();
-   CLO.output({format: (verbosity: Verbosity) => {
-      if (verbosity !== Verbosity.Internal) return '';
-      return `[Data Dependence Pass] End -- Duration: ${(endTime - startTime).toFixed(3)}ms`;
-   }});
-
+   CLO.log(`[Data Dependence Pass] End -- Duration: ${(endTime - startTime).toFixed(3)}ms`, Verbosity.Internal);
    return ddg;
 }
 
-// runDDTest
-// ? build/return DDG
 function analyzeLoopForDependence(loopNode: Xml.ForLoop) : DDGraph {
    const loopDDG = new DDGraph();
 
@@ -56,32 +39,31 @@ function analyzeLoopForDependence(loopNode: Xml.ForLoop) : DDGraph {
    let pairDepVectors: DependenceVector[];
 
    for (const arrayName of array_access_map.keys()) {
+      CLO.log(`\nTesting array ${arrayName}`, Verbosity.Internal);
       const array_accesses = array_access_map.get(arrayName)!;
 
-      // TODO: ALIAS CHECKING
-
       for (let i = 0; i < array_accesses.length; i++) {
-         const access_i = array_accesses.at(i)!;
+         const accessI = array_accesses.at(i)!;
          for (let j = 0; j < array_accesses.length; j++) {
-            const access_j = array_accesses.at(j)!;
+            const accessJ = array_accesses.at(j)!;
 
-            if (access_i.getAccessType() === ArrayAccess.READ_ACCESS &&
-                access_j.getAccessType() === ArrayAccess.READ_ACCESS) continue;
+            if (accessI.getAccessType() === ArrayAccess.READ_ACCESS &&
+                accessJ.getAccessType() === ArrayAccess.READ_ACCESS) continue;
 
-            let relevantLoopNest = access_i.enclosingLoop!
-               .getCommonEnclosingLoopNest(access_j.enclosingLoop!);
+            let relevantLoopNest = accessI.enclosingLoop!
+               .getCommonEnclosingLoopNest(accessJ.enclosingLoop!);
             // // handles edge case where loop being analyzed is not the outermost loop
             relevantLoopNest = Xml.ForLoop.getCommonLoops(relevantLoopNest, innerLoopNest);
 
             // TODO: Substitute Range Info
 
             pairDepVectors = [];
-            const dependenceExists: boolean = testAccessPair(access_i, access_j, 
+            const dependenceExists: boolean = testAccessPair(accessI, accessJ, 
                relevantLoopNest, pairDepVectors);
             
             if (dependenceExists) {
                for (const dv of pairDepVectors) {
-                  loopDDG.addArc(new Arc(access_i, access_j, dv));
+                  loopDDG.addArc(new Arc(accessI, accessJ, dv));
                }
             }
          }
@@ -91,60 +73,66 @@ function analyzeLoopForDependence(loopNode: Xml.ForLoop) : DDGraph {
    return loopDDG;
 }
 
-
-//test AccessPair
-// dvs is an OUT variable
+/**
+ * Used in Cetus to pick the dependence test. Because srcMP currently only supports
+ * the Range Test, this method does not provide much value
+ * @returns true for potential dependence, false for confirmed independence
+ */
 function testAccessPair(access: ArrayAccess, other_access: ArrayAccess,
-   loopNest: Xml.Element[], dvs: DependenceVector[]) : boolean {
-   let ret: boolean = false;
-   // NOTE : THIS IS WHERE TO PICK DEPENDENCE TEST
-   ret = testSubscriptBySubscript(access, other_access, loopNest, dvs);
-   return ret;
+   loopNest: Xml.Element[], dvs: DependenceVector[] /*out*/) : boolean {
+   CLO.log(`Testing Access Pair: ${access.toString()} ${other_access.toString()}`, Verbosity.Internal);
+   return testSubscriptBySubscript(access, other_access, loopNest, dvs);
 }
 
-// dvs is an OUT variable
+/**
+ * 
+ * @param access 
+ * @param other_access 
+ * @param loopNest 
+ * @param dvs out variable, will store the dependence vectors of the pair if there are any
+ * @returns true for potential dependence, false for confirmed independence
+ */
 function testSubscriptBySubscript(access: ArrayAccess, other_access: ArrayAccess,
-   loopNest: Xml.Element[], dvs: DependenceVector[]) : boolean {
-   if (access.getArrayDimensionality() === other_access.getArrayDimensionality()) {
-      const pairs: SubscriptPair[] = [];
-      const dimensions = access.getArrayDimensionality();
+   loopNest: Xml.Element[], dvs: DependenceVector[] /*out*/) : boolean {
+   const pairs: SubscriptPair[] = [];
+   const dimensions = access.getArrayDimensionality();
 
-      // const language = loopNest[0].get("/xmlns:unit")?.getAttribute("language") ?? "C++";
-
-      for (let dim = 1; dim <= dimensions; dim++) {
-         // TODO: RANGE SUBSTITUTION
-         const pair = new SubscriptPair(
-            access.getDimension(dim)!,
-            other_access.getDimension(dim)!,
-            access,
-            other_access,
-            (loopNest as Xml.ForLoop[]));
-         pairs.push(pair);
-      }
-      
-      const partitions: SubscriptPair[][] = partitionPairs(pairs);
-      // TODO: sort partitions 
-
-      // for a dependency to exist, all subscripts must have a depndency
-      for (let i = 0; i < partitions.length; i++) {
-         // if testPartition returns false then indepnence is proven
-         if (!testPartition(partitions.at(i)!, dvs)) return false;
-      }
-
-   } else {
-      // TODO: ALIAS NONSENSE
+   for (let dim = 1; dim <= dimensions; dim++) {
+      // TODO: RANGE SUBSTITUTION
+      const pair = new SubscriptPair(
+         access.getDimension(dim)!,
+         other_access.getDimension(dim)!,
+         access,
+         other_access,
+         (loopNest as Xml.ForLoop[]));
+      pairs.push(pair);
    }
-   // may be dependence
+   
+   const partitions: SubscriptPair[][] = partitionPairs(pairs);
+   const str: string[] = [];
+   partitions.forEach((part) => {str.push(`[${part.join(', ')}]`);});
+   CLO.log(`SubscriptPair Partitions: [${str.join(', ')}]`, Verbosity.Internal);
+   
+   // for a dependency to exist, all subscripts must have a depndency
+   for (let i = 0; i < partitions.length; i++) {
+      // if testPartition returns false then indepnence is proven
+      if (!testPartition(partitions.at(i)!, dvs)) return false;
+   }
+
    return true;
 }
 
-// getPartition
-// based on partition psuedocode
-// TODO: put ZIV first if wanted
 function partitionPairs(pairs: SubscriptPair[]) : SubscriptPair[][] {
    const partitions: SubscriptPair[][] = [];
    pairs.forEach((pair: SubscriptPair) => {
-      partitions.push([pair]);
+      // places ZIV partitions first, because their dependence tests are simpler
+      // should later be replaced, by sorting the partions by complexity at the end of the function
+      // if SIV testing is ever implemented
+      if (pair.getComplexity() === 0 ) {
+         partitions.unshift([pair]);
+      } else {
+         partitions.push([pair]);
+      }
    }); 
 
    const loopNest = pairs[0].getEnclosingLoops();
@@ -161,7 +149,7 @@ function partitionPairs(pairs: SubscriptPair[]) : SubscriptPair[][] {
          });
 
          if (hasLoopIndex) {
-            if (!k) {
+            if (k === undefined) {
                k = i;
             } else {
                partitions[k] = partitions.at(k)!.concat(partitions.at(i)!);
@@ -174,8 +162,7 @@ function partitionPairs(pairs: SubscriptPair[]) : SubscriptPair[][] {
    return partitions;
 }
 
-// testPartition
-function testPartition(parition: SubscriptPair[], partitoinDepVectors: DependenceVector[]) : boolean {
+function testPartition(parition: SubscriptPair[], partitionDepVectors: DependenceVector[] /*out*/) : boolean {
    let ret: boolean = false;
    const testDepVectors: DependenceVector[] = [];
    parition.forEach((pair: SubscriptPair) => {
@@ -183,7 +170,7 @@ function testPartition(parition: SubscriptPair[], partitoinDepVectors: Dependenc
       const pairDepVectors: DependenceVector[] = [];
 
       if (complexity === 0) {
-         ret ||= testZIV(pair, pairDepVectors); // return false if independent
+         ret ||= testZIV(pair, pairDepVectors);
       // } else if (complexity === 1) {
          // ret ||= testSIV(pair, pairDepVectors);
       } else {
@@ -192,17 +179,18 @@ function testPartition(parition: SubscriptPair[], partitoinDepVectors: Dependenc
       mergeVectorSets(testDepVectors, pairDepVectors);
    });
 
-   if (ret) mergeVectorSets(partitoinDepVectors, testDepVectors);
+   if (ret) mergeVectorSets(partitionDepVectors, testDepVectors);
 
    return ret;
 }
 
-function testZIV(pair: SubscriptPair, pairDependenceVectors: DependenceVector[]) : boolean {
-   const expr1 = pair.getSubscript1().get('xmlns:expr')?.text; // pair.getSubscript1()?.child(1)?.text;
+function testZIV(pair: SubscriptPair, pairDependenceVectors: DependenceVector[] /*out*/) : boolean {
+   const expr1 = pair.getSubscript1().get('xmlns:expr')?.text;
    const expr2 = pair.getSubscript2().get('xmlns:expr')?.text;
 
    if (!expr1 || !expr2) {
       pairDependenceVectors.push(new DependenceVector(pair.getEnclosingLoops()));
+      CLO.log(`ZIV Test: Dependent for ${pair.toString()}`, Verbosity.Internal);
       return true;
    }
 
@@ -213,35 +201,29 @@ function testZIV(pair: SubscriptPair, pairDependenceVectors: DependenceVector[])
 
    if (Number.isNaN(result) || result === ComputerAlgebraSystem.TRUE) {
       pairDependenceVectors.push(new DependenceVector(pair.getEnclosingLoops()));
+      CLO.log(`ZIV Test: Dependent for ${pair.toString()}`, Verbosity.Internal);
       return true;
    } 
+   CLO.log(`ZIV Test: Independent for ${pair.toString()}`, Verbosity.Internal);
    return false; 
 }
 
-// function testSIV(pair: SubscriptPair, pairDependenceVectors: DependenceVector[]) : boolean {
-//    throw new Error("Not Yet Implemented");
-// }
-
-// test MIV
-function testMIV(pair: SubscriptPair, pairDependenceVectors: DependenceVector[]) : boolean {
-
-   // const ddtest = new RangeTest(pair);
+function testMIV(pair: SubscriptPair, pairDependenceVectors: DependenceVector[] /*out*/) : boolean {
    const ddtest = new BanerjeeTest(pair);
 
    if (!ddtest.pairIsElligible()) {
       pairDependenceVectors.push(new DependenceVector(pair.getEnclosingLoops()));
+      CLO.log(`MIV Test: Dependent for ${pair.toString()}`, Verbosity.Internal);
       return true;
    }
 
    const new_dvs: DependenceVector[] = testDependenceTree(ddtest);
-   pairDependenceVectors.push(...new_dvs);
-   
-   // no dependence vectors = no depedence
+   pairDependenceVectors.push(...new_dvs);   
+   CLO.log(`MIV Test: ${new_dvs.length !== 0 ? 'D' : 'Ind'}ependent for ${pair.toString()}`, Verbosity.Internal);
    return new_dvs.length !== 0;
 }
-   // test tree
 
-function testDependenceTree(ddtest: RangeTest | BanerjeeTest): DependenceVector[] {
+function testDependenceTree(ddtest: BanerjeeTest): DependenceVector[] {
    const dv_list: DependenceVector[] = [];
    const dv: DependenceVector = new DependenceVector(ddtest.subscriptPair.getEnclosingLoops());
 
@@ -251,7 +233,7 @@ function testDependenceTree(ddtest: RangeTest | BanerjeeTest): DependenceVector[
    
 }
 
-function testTree(ddtest: RangeTest | BanerjeeTest, dv: DependenceVector, pos: number, dv_list: DependenceVector[]) {
+function testTree(ddtest: BanerjeeTest, dv: DependenceVector, pos: number, dv_list: DependenceVector[]) {
    const loopNest = ddtest.subscriptPair.getEnclosingLoops();
    const loop = loopNest[pos];
    for (let dir = DependenceDir.less; dir <= DependenceDir.greater; dir++) {
@@ -263,7 +245,6 @@ function testTree(ddtest: RangeTest | BanerjeeTest, dv: DependenceVector, pos: n
       if (!dv.containsDirection(DependenceDir.any) &&
          (!dv.isAllEqual() || ddtest.subscriptPair.isReachable())) {
          dv_list.push(dv.clone());
-         // console.log(`[Banerjee Test] Dependence from line ${ddtest.subscriptPair.getAccessLine(1)} to line ${ddtest.subscriptPair.getAccessLine(2)}`);
       }
 
       // recursive base case

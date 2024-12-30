@@ -158,7 +158,7 @@ export class ParallelizableStatus implements CLIMessage {
             } 
             if (this.dangerousJumps.length > 0) {
                 body += `but the loop contains ${chalk.yellow('potentially dangerous jump statements')} which may cause the parallelized loop to behave unexpectedly.\n`;
-                body += examples(this.dangerousJumps) + '\n';
+                body += examples(this.dangerousJumps);
             }
         } else {
             const paddingLength = 80 - (27 + 1 + filename.length);
@@ -169,7 +169,7 @@ export class ParallelizableStatus implements CLIMessage {
             body = `${this.loop.line}:${this.loop.col}| for${this.loop.header.text} is ${chalk.red('not parallelizable')}.\n`;
             if (this.arrayDeps.size > 0) {
                 body += 'due to loop carried array dependencies.';
-                body += examples(Array.from(this.arrayDeps)) + '\n';
+                body += examples(Array.from(this.arrayDeps));
             }
             if (this.containsScalarDependencies) {
                 body += 'due to scalar dependencies.';
@@ -184,7 +184,7 @@ export class ParallelizableStatus implements CLIMessage {
     }
 
     format(verbosity: Verbosity) : string {
-        if (verbosity === Verbosity.Simple) return this.simpleFormat;
+        if (verbosity === Verbosity.Basic) return this.simpleFormat;
         else return this.complexFormat;
     }
     
