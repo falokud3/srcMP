@@ -25,6 +25,8 @@ export function run(program: Xml.Element) : DDGraph {
       ddg.addAllArcs(analyzeLoopForDependence(loop));
    });
 
+   CLO.log(`\nData Dependence Graph:\n${ddg.toString()}`, Verbosity.Internal);
+
    const endTime = performance.now();
    CLO.log(`[Data Dependence Pass] End -- Duration: ${(endTime - startTime).toFixed(3)}ms`, Verbosity.Internal);
    return ddg;

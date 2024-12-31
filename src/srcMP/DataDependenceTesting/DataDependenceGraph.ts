@@ -43,6 +43,32 @@ export class DataDependenceGraph {
         return loopGraph;
     }
 
+    public toString() : string {
+        let nodesString = '';
+        let edgesString = '';
+        let id = 1;
+        const map = new Map<string, string>();
+
+        for (const arc of this.arcs) {
+            const source = `${arc.source.access.line}:${arc.source.access.col}|${arc.source.toString()}`;
+            const sink = `${arc.sink.access.line}:${arc.sink.access.col}|${arc.sink.toString()}`;
+            if (!map.has(source)) {
+                map.set(source, `node${id}`);
+                nodesString += `node${id} [label="${arc.source.access.line}:${arc.source.access.col}\\n${arc.source.access.text}\\n${arc.source.getAccessType()}"]\n`;
+                id += 1;
+            }
+            if (!map.has(sink)) {
+                map.set(sink, `node${id}`);
+                nodesString += `node${id} [label="${arc.sink.access.line}:${arc.sink.access.col}\\n${arc.sink.access.text}\\n${arc.sink.getAccessType()}"]\n`;
+                id += 1;
+            }
+            edgesString += `${map.get(source)} -> ${map.get(sink)} [xlabel="${arc.dependenceVector.toString()}"]\n`;
+        }
+
+        return `digraph {
+${nodesString}${edgesString}}`;
+    }
+
 }
 
 type Dependence = "Flow" | "Anti" | "Ouptut" | "Input";
@@ -50,7 +76,7 @@ type Dependence = "Flow" | "Anti" | "Ouptut" | "Input";
 export class Arc {
     readonly source: ArrayAccess;
     readonly sink: ArrayAccess;
-    private dependenceType: Dependence;
+    readonly dependenceType: Dependence;
     public dependenceVector: DependenceVector;
 
     public constructor(expr1: ArrayAccess, expr2: ArrayAccess, depVector: DependenceVector) {

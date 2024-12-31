@@ -93,10 +93,11 @@ class DependenceVector {
     }
 
     public toString() : string {
-        for (const loop of this.directionVector.keys()) {
-            console.log(this.directionVector.get(loop));
+        const ret: string[] = [];
+        for (const dir of this.directionVector.values()) {
+            ret.push(directionToString(dir));
         }
-        return "";
+        return ret.join(',');
     }
 
     public mergeWith(other: DependenceVector) : void {
@@ -143,7 +144,22 @@ export enum Direction {
     any = 0, 
     less, 
     equal, 
-    greater
+    greater,
+}
+
+function directionToString(dir: Direction) : string {
+    switch (dir) {
+        case Direction.nil:
+            return 'NIL';
+        case Direction.any:
+            return '*';
+        case Direction.less:
+            return '<';
+        case Direction.equal:
+            return '=';
+        case Direction.greater:
+            return '>';
+    }
 }
 
 const cartesianProduct: number[][] = [

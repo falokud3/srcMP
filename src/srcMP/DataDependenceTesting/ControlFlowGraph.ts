@@ -16,7 +16,7 @@ export class ControlFlowGraph {
     }
 
     public toString() {
-        let ret: string = "digraph G {\n";
+        let ret: string = "digraph {\n";
 
         for (const node of this.nodes) {
             ret += node.nodeInfoToString() + "\n";
