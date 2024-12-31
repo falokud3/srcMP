@@ -19,7 +19,7 @@ export function run(program: Xml.Element, programDDG: DataDependenceGraph) {
     }
     removeExistingPragmas(program);
     output(...messages);    
-    insertPragmas(messages);
+    insertPragmas(program, messages);
 
     const endTime = performance.now();
     log(`[Parallelizable Loop Detection] End -- Duration: ${(endTime - startTime).toFixed(3)}ms`, Verbosity.Internal);
@@ -32,9 +32,10 @@ function removeExistingPragmas(program: Xml.Element) : void {
     }
 }
 
-function insertPragmas(analyzedLoops: ParallelizableStatus[]) : void {
+function insertPragmas(program: Xml.Element, analyzedLoops: ParallelizableStatus[]) : void {
     const parallelizedLoops = analyzedLoops.filter((loopStatus) => loopStatus.isParallelizable && !loopStatus.parallelizableOuterLoop);
-    const pragmaXML = createXml('#pragma omp parallel for', 'C++')!;
+    const language = program.get("/xmlns:unit")!.getAttribute("language")!;
+    const pragmaXML = createXml('#pragma omp parallel for', language)!;
     for (const loopStatus of parallelizedLoops) {
         loopStatus.loop.insertBefore(pragmaXML.copy());
         loopStatus.loop.insertBefore( loopStatus.loop.domNode.ownerDocument.createTextNode('\n'));
@@ -56,8 +57,6 @@ function parallelizeLoopNest(outerLoop: Xml.ForLoop, ddg: DataDependenceGraph) :
             message.parallelizableOuterLoop = scheduled.find((value) => {
                 return Xml.isAncestorOf(value, nestedLoop);
             });
-
-            // if (hasScheduledOuterLoop) continue;
 
             if (message.containsBreak || message.containsScalarDependencies) continue;
 

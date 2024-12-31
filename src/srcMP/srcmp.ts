@@ -13,7 +13,7 @@ function runCompiler(program: Xml.Element) : Xml.Element {
     Xml.setNamespaces(program);
 
     const programDDG = DDT.run(program);
-    PLD.run(program, programDDG);  //
+    PLD.run(program, programDDG);
 
     return program;
 }
