@@ -279,8 +279,7 @@ export class EligiblityMessage implements CLIMessage {
       }
 
       if (this.nestedInelligibleLoop) {
-         body += `There's a loop nested within this loop at line ${this.nestedInelligibleLoop.line}, col ${this.nestedInelligibleLoop.col} that is ineligible.\n`;
-         body += `\t ${this.nestedInelligibleLoop.line}:${this.nestedInelligibleLoop.col}| ${this.nestedInelligibleLoop.header.text}\n`;
+         body += `Nested loop ${this.nestedInelligibleLoop.line}:${this.nestedInelligibleLoop.col}|${this.nestedInelligibleLoop.header.text} that is ineligible.\n`;
       }
       return body.substring(0, body.length - 1); // eliminates trailing \n
    }

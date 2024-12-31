@@ -1,7 +1,6 @@
 // Data Dependence Test Framework
 import * as Xml from '../../common/Xml/Xml.js';
 import * as ComputerAlgebraSystem from '../../common/ComputerAlgebraSystem.js';
-import * as CLO from '../../common/CommandLineOutput.js';
 
 import { ArrayAccess } from './ArrayAccess.js';
 import { DependenceVector, DependenceDir, mergeVectorSets } from './DependenceVector.js';
@@ -9,26 +8,26 @@ import { SubscriptPair } from './SubscriptPair.js';
 import { BanerjeeTest } from './BanerjeeTest.js';
 import { Arc, DataDependenceGraph as DDGraph } from './DataDependenceGraph.js';
 import { extractOutermostDependenceTestEligibleLoops } from './Eligibility.js';
-import { Verbosity } from '../../common/CommandLineOutput.js';
+import { Verbosity, log, output } from '../../common/CommandLineOutput.js';
 
 export function run(program: Xml.Element) : DDGraph {
    const startTime = performance.now();
-   CLO.log('[Data Dependence Pass] Start', Verbosity.Internal);
+   log('[Data Dependence Pass] Start', Verbosity.Internal);
    const ddg = new DDGraph();
 
    const [loops, messages] = extractOutermostDependenceTestEligibleLoops(program);
 
-   CLO.output(...messages);
+   output(...messages);
    
    loops.forEach((loop) => {
-      CLO.log(`\nTesting ${loop.line}:${loop.col}|${loop.header.text}`, Verbosity.Internal);
+      log(`\nTesting ${loop.line}:${loop.col}|${loop.header.text}`, Verbosity.Internal);
       ddg.addAllArcs(analyzeLoopForDependence(loop));
    });
 
-   CLO.log(`\nData Dependence Graph:\n${ddg.toString()}`, Verbosity.Internal);
+   log(`\nData Dependence Graph:\n${ddg.toString()}`, Verbosity.Internal);
 
    const endTime = performance.now();
-   CLO.log(`[Data Dependence Pass] End -- Duration: ${(endTime - startTime).toFixed(3)}ms`, Verbosity.Internal);
+   log(`[Data Dependence Pass] End -- Duration: ${(endTime - startTime).toFixed(3)}ms`, Verbosity.Internal);
    return ddg;
 }
 
@@ -41,7 +40,7 @@ function analyzeLoopForDependence(loopNode: Xml.ForLoop) : DDGraph {
    let pairDepVectors: DependenceVector[];
 
    for (const arrayName of array_access_map.keys()) {
-      CLO.log(`\nTesting array ${arrayName}`, Verbosity.Internal);
+      log(`\nTesting array ${arrayName}`, Verbosity.Internal);
       const array_accesses = array_access_map.get(arrayName)!;
 
       for (let i = 0; i < array_accesses.length; i++) {
@@ -82,7 +81,7 @@ function analyzeLoopForDependence(loopNode: Xml.ForLoop) : DDGraph {
  */
 function testAccessPair(access: ArrayAccess, other_access: ArrayAccess,
    loopNest: Xml.Element[], dvs: DependenceVector[] /*out*/) : boolean {
-   CLO.log(`Testing Access Pair: ${access.toString()} ${other_access.toString()}`, Verbosity.Internal);
+   log(`Testing Access Pair: ${access.access.line}:${access.access.col}|${access.toString()} ${other_access.access.line}:${other_access.access.col}|${other_access.toString()}`, Verbosity.Internal);
    return testSubscriptBySubscript(access, other_access, loopNest, dvs);
 }
 
@@ -113,7 +112,7 @@ function testSubscriptBySubscript(access: ArrayAccess, other_access: ArrayAccess
    const partitions: SubscriptPair[][] = partitionPairs(pairs);
    const str: string[] = [];
    partitions.forEach((part) => {str.push(`[${part.join(', ')}]`);});
-   CLO.log(`SubscriptPair Partitions: [${str.join(', ')}]`, Verbosity.Internal);
+   log(`SubscriptPair Partitions: [${str.join(', ')}]`, Verbosity.Internal);
    
    // for a dependency to exist, all subscripts must have a depndency
    for (let i = 0; i < partitions.length; i++) {
@@ -192,7 +191,7 @@ function testZIV(pair: SubscriptPair, pairDependenceVectors: DependenceVector[] 
 
    if (!expr1 || !expr2) {
       pairDependenceVectors.push(new DependenceVector(pair.getEnclosingLoops()));
-      CLO.log(`ZIV Test: Dependent for ${pair.toString()}`, Verbosity.Internal);
+      log(`ZIV Test: Dependent for ${pair.toString()}`, Verbosity.Internal);
       return true;
    }
 
@@ -203,10 +202,10 @@ function testZIV(pair: SubscriptPair, pairDependenceVectors: DependenceVector[] 
 
    if (Number.isNaN(result) || result === ComputerAlgebraSystem.TRUE) {
       pairDependenceVectors.push(new DependenceVector(pair.getEnclosingLoops()));
-      CLO.log(`ZIV Test: Dependent for ${pair.toString()}`, Verbosity.Internal);
+      log(`ZIV Test: Dependent for ${pair.toString()}`, Verbosity.Internal);
       return true;
    } 
-   CLO.log(`ZIV Test: Independent for ${pair.toString()}`, Verbosity.Internal);
+   log(`ZIV Test: Independent for ${pair.toString()}`, Verbosity.Internal);
    return false; 
 }
 
@@ -215,13 +214,13 @@ function testMIV(pair: SubscriptPair, pairDependenceVectors: DependenceVector[] 
 
    if (!ddtest.pairIsElligible()) {
       pairDependenceVectors.push(new DependenceVector(pair.getEnclosingLoops()));
-      CLO.log(`MIV Test: Dependent for ${pair.toString()}`, Verbosity.Internal);
+      log(`MIV Test: Dependent for ${pair.toString()}`, Verbosity.Internal);
       return true;
    }
 
    const new_dvs: DependenceVector[] = testDependenceTree(ddtest);
    pairDependenceVectors.push(...new_dvs);   
-   CLO.log(`MIV Test: ${new_dvs.length !== 0 ? 'D' : 'Ind'}ependent for ${pair.toString()}`, Verbosity.Internal);
+   log(`MIV Test: ${new_dvs.length !== 0 ? 'D' : 'Ind'}ependent for ${pair.toString()}`, Verbosity.Internal);
    return new_dvs.length !== 0;
 }
 

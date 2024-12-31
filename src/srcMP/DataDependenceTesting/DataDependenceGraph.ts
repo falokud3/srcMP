@@ -62,7 +62,7 @@ export class DataDependenceGraph {
                 nodesString += `node${id} [label="${arc.sink.access.line}:${arc.sink.access.col}\\n${arc.sink.access.text}\\n${arc.sink.getAccessType()}"]\n`;
                 id += 1;
             }
-            edgesString += `${map.get(source)} -> ${map.get(sink)} [xlabel="${arc.dependenceVector.toString()}"]\n`;
+            edgesString += `${map.get(source)} -> ${map.get(sink)} [label="${arc.dependenceVector.toString()}"]\n`;
         }
 
         return `digraph {

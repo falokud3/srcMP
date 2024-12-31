@@ -1,5 +1,5 @@
 import chalk from "chalk";
-import { CLIMessage, Verbosity, examples, output } from '../../common/CommandLineOutput.js';
+import { CLIMessage, Verbosity, examples, output, log } from '../../common/CommandLineOutput.js';
 import { DataDependenceGraph } from "../DataDependenceTesting/DataDependenceGraph.js";
 import { Direction } from "../DataDependenceTesting/DependenceVector.js";
 import { extractOutermostDependenceTestEligibleLoops } from "../DataDependenceTesting/Eligibility.js";
@@ -9,6 +9,9 @@ import { createXml } from "../../common/srcml.js";
 
 
 export function run(program: Xml.Element, programDDG: DataDependenceGraph) {
+    const startTime = performance.now();
+    log('[Parallelizable Loop Detection] Start', Verbosity.Internal);
+
     const outerLoops = program.find('//xmlns:for[count(ancestor::xmlns:for)=0]') as Xml.ForLoop[];
     const messages: ParallelizableStatus[] = [];
     for (const outerLoop of outerLoops) {
@@ -18,6 +21,8 @@ export function run(program: Xml.Element, programDDG: DataDependenceGraph) {
     output(...messages);    
     insertPragmas(messages);
 
+    const endTime = performance.now();
+    log(`[Parallelizable Loop Detection] End -- Duration: ${(endTime - startTime).toFixed(3)}ms`, Verbosity.Internal);
 }
 
 function removeExistingPragmas(program: Xml.Element) : void {
@@ -114,10 +119,10 @@ export class ParallelizableStatus implements CLIMessage {
     }
 
     get simpleFormat() : string {
-        let output = `${this.loop.line}:${this.loop.col}| for${this.loop.header.text} `;
+        let output = '';
 
         if (this.isParallelizable) {
-            output += `is ${chalk.green('parallelizable')} `;
+            output = `${chalk.green('Parallelizable')}: ${this.loop.line}:${this.loop.col}|${this.loop.header.text} `;
 
             if (this.parallelizableOuterLoop) {
                 output += `but it is ${chalk.yellow('nested inside a parallelizable loop')}.`;
@@ -125,7 +130,7 @@ export class ParallelizableStatus implements CLIMessage {
                 output += `but contains ${chalk.yellow('potentially dangerous jump statements')}.`;
             }
         } else {
-            output += `is ${chalk.red('not parallelizable')} `;
+            output = `${chalk.red('Unparallelizable')}: ${this.loop.line}:${this.loop.col}|${this.loop.header.text} `;
 
             if (this.arrayDeps.size > 0) {
                 output += 'due to loop carried array dependencies.';
@@ -139,34 +144,22 @@ export class ParallelizableStatus implements CLIMessage {
         return output;
     }
 
-    get complexFormat() : string {
-        let header: string, footer: string, body: string;
-        const filename = this.loop.get('/xmlns:unit')?.getAttribute('filename') ?? '';
-      
+    get internalFormat() : string {
+        let body: string;      
   
         if (this.isParallelizable) {
             // TODO: Private, Reduction Variables
-            const paddingLength = 80 - (25 + 1 + filename.length);
-            const padding = '+'.repeat(paddingLength > 0 ? paddingLength : 0);
-            header = chalk.green(`++ PARALLELIZABLE LOOP ++${padding} ${filename}`);
-            footer = chalk.green(`+`.repeat(80));
 
-            body = `${this.loop.line}:${this.loop.col}| for${this.loop.header.text} is ${chalk.green('parallelizable')}.\n`;
-
+            body = `${chalk.green('Parallelizable')}: ${this.loop.line}:${this.loop.col}|${this.loop.header.text}\n`;
             if (this.parallelizableOuterLoop) {
-                body += `${chalk.yellow(`but there is an outer parallelizable for loop`)} ${this.parallelizableOuterLoop.header.text} at line ${this.parallelizableOuterLoop.line}, column ${this.parallelizableOuterLoop.col}. Parallelizing the outermost loop is typically most beneficial for performance.\n`;
+                body += `${chalk.yellow(`but there is an enclosing parallelizable loop`)} ${this.parallelizableOuterLoop.line}:${this.parallelizableOuterLoop.col}|${this.parallelizableOuterLoop.header.text}. Parallelizing the outermost loop is typically most beneficial for performance.\n`;
             } 
             if (this.dangerousJumps.length > 0) {
                 body += `but the loop contains ${chalk.yellow('potentially dangerous jump statements')} which may cause the parallelized loop to behave unexpectedly.\n`;
                 body += examples(this.dangerousJumps);
             }
         } else {
-            const paddingLength = 80 - (27 + 1 + filename.length);
-            const padding = '-'.repeat(paddingLength > 0 ? paddingLength : 0);
-            header = chalk.red(`-- UNPARALLELIZABLE LOOP --${padding} ${filename}`);
-            footer = chalk.red(`-`.repeat(80));
-
-            body = `${this.loop.line}:${this.loop.col}| for${this.loop.header.text} is ${chalk.red('not parallelizable')}.\n`;
+            body = `${chalk.red('Unparallelizable')}: ${this.loop.line}:${this.loop.col}|${this.loop.header.text}\n`;
             if (this.arrayDeps.size > 0) {
                 body += 'due to loop carried array dependencies.';
                 body += examples(Array.from(this.arrayDeps));
@@ -180,12 +173,17 @@ export class ParallelizableStatus implements CLIMessage {
                 body += examples(this.loop.find('.//xmlns:break'));
             }
         }
-        return `${header}\n${body.substring(0, body.length - 1)}\n${footer}`;
+        return `${body.substring(0, body.length - 1)}`;
     }
 
     format(verbosity: Verbosity) : string {
-        if (verbosity === Verbosity.Basic) return this.simpleFormat;
-        else return this.complexFormat;
+        if (verbosity === Verbosity.Basic) {
+            return this.simpleFormat;
+        } else if (verbosity === Verbosity.Internal) {
+            return this.internalFormat;
+        } else {
+            return '';
+        }
     }
     
 
