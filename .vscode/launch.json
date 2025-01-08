@@ -13,6 +13,13 @@
             "preLaunchTask": "npm: compile"
         },
         {
+            "type": "python",
+            "request": "launch",
+            "name": "py2srcml",
+            "program": "py2srcML/py2srcml.py",
+            "args": ["examples/srcMP/py/inelligible.py"]
+        },
+        {
             "type": "node",
             "request": "launch",
             "name": "Divergence Testing",
