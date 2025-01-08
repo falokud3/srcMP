@@ -9,7 +9,7 @@
             "request": "launch",
             "name": "srcMP",
             "program": "build/srcMP/srcmp.cjs",
-            "args": ["tests/srcMP/cpp/InelligibleLoop.cpp", "-v 2", "--noEmit"],
+            "args": ["examples/srcMP/cpp/ziv_pass.cpp", "-v 2", "--noEmit"],
             "preLaunchTask": "npm: compile"
         },
         {

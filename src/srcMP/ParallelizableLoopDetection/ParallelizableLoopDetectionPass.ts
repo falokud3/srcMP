@@ -64,18 +64,10 @@ function parallelizeLoopNest(outerLoop: Xml.ForLoop, ddg: DataDependenceGraph) :
             for (const arc of nestDDG.arcs) {
                 const dir = arc.dependenceVector.getDirection(nestedLoop);
 
-                if (dir !== undefined || dir === Direction.equal || dir === Direction.nil) continue;
+                if (dir === undefined || dir === Direction.equal || dir === Direction.nil) continue;
 
-                const sourceSymbol = arc.source.arrayName;
-                const sinkSymbol = arc.sink.arrayName;
-
-                // TODO: Private or Reduction
-                const serialize = (sourceSymbol !== sinkSymbol);
-
-                if (serialize) {
-                    arrayDeps.add(arc.source.access);
-                    if (dir !== Direction.any) nestDDG.removeArc(arc);
-                }
+                arrayDeps.add(arc.source.access.parentElement!);
+                if (dir !== Direction.any) nestDDG.removeArc(arc);
 
             }
 

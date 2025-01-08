@@ -13,7 +13,7 @@ int main(){
   float a[1000], b[1000];
   
   for (int i=1; i<1000; i++) {
-    a[i]= b[i];
+    a[i]= a[i] + 2;
   }
 	
    return 0;

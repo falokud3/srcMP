@@ -13,8 +13,7 @@ int main(){
   int x = 3;
   
   for (int i=1; i<1000; i++) {
-    a[3 + 9]= a[12];
-    a[x] = a[3];
+    a[3]++;
   }
 	
    return 0;

@@ -1,20 +1,15 @@
 import * as Xml from '../../common/Xml/Xml.js';
 
 export function collectScalarDependencies(loop: Xml.ForLoop) : Set<Xml.Element> {
-    const ret = new Set<Xml.Element>(); // TODO: REMOVE USE OF ALL SETS
+    const ret = new Set<Xml.Element>(); 
     const def = loop.body.defSymbols;
-    // const use = loop.useSymbols;
 
     const loopIVs = loop.getInnerLoopNest().map((loop) => Array.from(loop.header.defSymbols))
         .flat();
     
     for (const symbol of def) {
-        // TODO: Private or Reduction
         if (!isScalar(symbol)) continue;
         if (loopIVs.some((iv) => symbol.equals(iv) )) continue;
-
-        // TODO: pointer
-        // TODO: Objects
 
         ret.add(symbol);
     }
@@ -22,7 +17,7 @@ export function collectScalarDependencies(loop: Xml.ForLoop) : Set<Xml.Element> 
 }
 
 function isScalar(symbol: Xml.Element) : boolean {
-    // ! duplicate names a[][] x.a
+    // ! duplicate names a[][] x.a may cause issues
     return !(symbol.parentElement?.name === 'name' 
         && symbol.parentElement?.contains('xmlns:index'));
 }

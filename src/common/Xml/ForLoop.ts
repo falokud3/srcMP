@@ -4,7 +4,6 @@ import { assert } from "console";
 import { ArrayAccess } from '../../srcMP/DataDependenceTesting/ArrayAccess.js';
 import XmlElement from "./Element.js";
 import * as Xml from './Xml.js';
-import * as RangeAnalysis from '../../srcMP/DataDependenceTesting/RangeAnalysis.js';
 import * as CAS from '../ComputerAlgebraSystem.js';
 
 
@@ -217,12 +216,6 @@ export function getCanonicalIncrementValue(loop: Xml.ForLoop): number | string {
         return incrStep.text;
       }
 
-   } else if (incrStep.name === "name") {
-      const rd = RangeAnalysis.query(incrExpr);
-      if (rd) {
-         const loopInc = rd.substituteForward(incrStep);
-         return loopInc;
-      }
    }
    return incrStep.text;
 }/**
