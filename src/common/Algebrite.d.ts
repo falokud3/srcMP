@@ -33,10 +33,20 @@ declare module 'algebrite' {
      */
     export function simplify(expression: string) : U;
 
+    /** 
+     * Returns the coefficient of a variable at a certain degree within a given
+     * polynomial
+     */
     export function coeff(polynomial: string, variable: string, degree: string) : U;
 
+    /**
+     * Substitutes a value within an expression
+     */
     export function subst(newValue: string, oldValue: string, expression: string) : U;
 
+    /**
+     * Clears the CAS engine.
+     */
     export function clearall() : void;
 
 }

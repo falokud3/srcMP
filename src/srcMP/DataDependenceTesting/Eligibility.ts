@@ -5,7 +5,6 @@ import * as Xml from '../../common/Xml/Xml.js';
 
 import chalk from 'chalk';
 
-// TODO: Test
 export function extractOutermostDependenceTestEligibleLoops(root: Xml.Element): [Xml.ForLoop[], EligiblityMessage[]] {
    const outerLoops = <Xml.ForLoop[]>root.find("descendant-or-self::xmlns:for[count(ancestor::xmlns:for)=0]");
 
@@ -90,7 +89,7 @@ function hasCanonicalCondition(loop: Xml.ForLoop, indexVariable: Xml.Element): b
 
    const conditionExpression = loop.condition.child(0)!;
 
-   // TODO: Allow for != casw wehre incr-expr == 1
+   // TODO: Allow for != case wehre incr-expr == 1
    const operators = conditionExpression.find("./xmlns:operator");
    operators.filter((op: Xml.Element) => {
       return ["&lt;", "&gt;", "&lt;=", "&gt;="].includes(op.text);

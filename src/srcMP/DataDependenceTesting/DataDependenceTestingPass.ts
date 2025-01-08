@@ -21,7 +21,7 @@ export function run(program: Xml.Element) : DDGraph {
    
    loops.forEach((loop) => {
       log(`\nTesting ${loop.line}:${loop.col}|${loop.header.text}`, Verbosity.Internal);
-      ddg.addAllArcs(analyzeLoopForDependence(loop));
+      ddg.addArcs(...analyzeLoopForDependence(loop).arcs);
    });
 
    log(`\nData Dependence Graph:\n${ddg.toString()}`, Verbosity.Internal);
@@ -48,8 +48,8 @@ function analyzeLoopForDependence(loopNode: Xml.ForLoop) : DDGraph {
          for (let j = 0; j < array_accesses.length; j++) {
             const accessJ = array_accesses.at(j)!;
 
-            if (accessI.getAccessType() === ArrayAccess.READ_ACCESS &&
-                accessJ.getAccessType() === ArrayAccess.READ_ACCESS) continue;
+            if (accessI.access_type === ArrayAccess.READ_ACCESS &&
+                accessJ.access_type === ArrayAccess.READ_ACCESS) continue;
 
             let relevantLoopNest = accessI.enclosingLoop!
                .getCommonEnclosingLoopNest(accessJ.enclosingLoop!);
@@ -64,7 +64,7 @@ function analyzeLoopForDependence(loopNode: Xml.ForLoop) : DDGraph {
             
             if (dependenceExists) {
                for (const dv of pairDepVectors) {
-                  loopDDG.addArc(new Arc(accessI, accessJ, dv));
+                  loopDDG.addArcs(new Arc(accessI, accessJ, dv));
                }
             }
          }

@@ -24,7 +24,6 @@ export const FALSE = 0;
  * expression object representing it
  * @param expression
  */
-// TODO: CHANGE TO return string | number
 export function simplify(expression: string)  {
     algebrite.clearall();
     try {

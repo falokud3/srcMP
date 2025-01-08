@@ -13,18 +13,18 @@ export class BanerjeeTest {
 
     private isTestEligible: boolean = true;
 
-    static readonly  LB = 0;
-    static readonly  UB = 4;
+    static readonly LB = 0;
+    static readonly UB = 4;
 
-    static readonly  LB_any = 0;
-    static readonly  LB_less = 1;
-    static readonly  LB_equal = 2;
-    static readonly  LB_greater = 3;
+    static readonly LB_any = 0;
+    static readonly LB_less = 1;
+    static readonly LB_equal = 2;
+    static readonly LB_greater = 3;
 
-    static readonly  UB_any = 4;
-    static readonly  UB_less = 5;
-    static readonly  UB_equal = 6;
-    static readonly  UB_greater = 7;
+    static readonly UB_any = 4;
+    static readonly UB_less = 5;
+    static readonly UB_equal = 6;
+    static readonly UB_greater = 7;
 
 
     public constructor(pair: SubscriptPair) {
@@ -40,7 +40,6 @@ export class BanerjeeTest {
             if (index_node) {
                 idList.push(index_node.text);
             }
-
         }
 
         // get constant coefficients
@@ -49,11 +48,7 @@ export class BanerjeeTest {
         this.const2 = this.getConstantCoefficient(pair.getSubscript2(), idList);
 
         // compute bounds for the loop
-
-        // TODO: ZIP() instead of i 
         for (let i = 0; i < this.loopnest.length; i++) {
-
-
             const id = idList[i];
             const loop = this.loopnest[i];
 
@@ -63,7 +58,6 @@ export class BanerjeeTest {
                 break;
             }
 
-            // TODO: Change Subscript pair to have the expression not the index
             const coeff1 = this.getCoefficient(pair.getSubscript1().get('xmlns:expr')!.text, id);
             const coeff2 = this.getCoefficient(pair.getSubscript2().get('xmlns:expr')!.text, id);
 
@@ -139,7 +133,6 @@ export class BanerjeeTest {
             }
             this.banerjeeBounds.set(this.loopnest[i].toString(), bounds);
         }
-
     }
 
     public get subscriptPair() : SubscriptPair {
@@ -148,11 +141,9 @@ export class BanerjeeTest {
 
     public getConstantCoefficient(subscript: Xml.Element, idList: string[]) : string {
         const expression = subscript.get('xmlns:expr')!.text;
-        // TODO: use Range Analysis here
         let ret: string = expression;
-        // TODO: use Algebrite filter instead
         for (const id of idList) {
-            // maybe use filter instead
+            // maybe use Algebrite filter instead
             ret = ComputerAlgebraSystem.simplify(`coeff(${ret}, ${id}, 0)`);
         }
         return ret;
@@ -186,12 +177,9 @@ export class BanerjeeTest {
             banerjeeUB += loopBounds![dir + BanerjeeTest.UB];
         }
 
-        // console.log(this.pair.toString())
         if (diff < banerjeeLB || diff > banerjeeUB) {
-            // console.log("No Dependence found")
             return false;
         } else {
-            // console.log("Dependence found")
             return true;
         }
     }

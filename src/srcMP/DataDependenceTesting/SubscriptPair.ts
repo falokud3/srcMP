@@ -1,9 +1,11 @@
 
 import * as Xml from '../../common/Xml/Xml.js';
 import { ArrayAccess } from './ArrayAccess.js';
-import { ControlFlowGraph } from './ControlFlowGraph.js';
+import { buildGraph } from './ControlFlowGraphBuilder.js';
 
 class SubscriptPair {
+    private static reachableCache: Map<string, boolean> =  new Map();
+
     private subscript1: Xml.Element;
     private subscript2: Xml.Element;
 
@@ -21,21 +23,26 @@ class SubscriptPair {
         this.enclosingLoops = loops;
     }
 
+    /**
+     * Returns true if the stmt2 can be reached from stmt2
+     */
     public isReachable() : boolean {
-        const stmt1 = this.access1.parentStatement;
-        const stmt2 = this.access2.parentStatement;
+        const stmt1 = this.access1.access.parentElement!;
+        const stmt2 = this.access2.access.parentElement!;
 
         if (stmt1.equals(stmt2)) {
-            return this.access1.getAccessType() === ArrayAccess.READ_ACCESS &&
-                this.access2.getAccessType() === ArrayAccess.WRITE_ACCESS;
+            return this.access1.access_type === ArrayAccess.READ_ACCESS &&
+                this.access2.access_type === ArrayAccess.WRITE_ACCESS;
         } else {
-            //TODO: use caching system
-            const cfg = ControlFlowGraph.buildControlFlowGraph(this.enclosingLoops[this.enclosingLoops.length - 1]);
-            return cfg.isReachable(stmt1, stmt2);
+            const cacheKey = this.serializePair();
+            if (!SubscriptPair.reachableCache.has(cacheKey)) {
+                const cfg = buildGraph(this.enclosingLoops[this.enclosingLoops.length - 1]);
+                SubscriptPair.reachableCache.set(cacheKey, cfg.isReachable(stmt1, stmt2));
+            }            
+            return SubscriptPair.reachableCache.get(cacheKey)!;
         }
     }
-
-
+    
     public getComplexity() : number {
         let ret: number = 0;
         this.enclosingLoops.forEach((loop: Xml.ForLoop) => {
@@ -54,13 +61,9 @@ class SubscriptPair {
         return this.subscript1;
     }
 
-    public getAccessLine(access: number) : number {
-        if (access === 1) {
-            return this.access1.parentStatement.line;
-        } else {
-            return this.access2.parentStatement.line;
-        }
-
+    public getAccessLine(access: 1 | 2) : number {
+        return access === 1 ? this.access1.access.parentElement!.line
+            : this.access2.access.parentElement!.line;
     }
 
     public getSubscript2() : Xml.Element {
@@ -69,6 +72,18 @@ class SubscriptPair {
 
     public toString() : string {
         return `(${this.subscript1.text} ${this.subscript2.text})`;
+    }
+
+    /**
+     * Used to generate unique key for cache
+     */
+    private serializePair() : string {
+        let ret = '';
+
+        ret += `${this.access1.access.line}:${this.access1.access.col} ${this.access1.access.text}\n`;
+        ret += `${this.access2.access.line}:${this.access2.access.col} ${this.access2.access.text}`;
+
+        return ret;
     }
 }
 

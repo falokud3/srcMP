@@ -1,3 +1,7 @@
+/**
+ * Build control flow graph from srcML elements
+ */
+
 import * as Xml from '../../common/Xml/Xml.js';
 import { ControlFlowGraph, ControlFlowNode } from './ControlFlowGraph.js';
 
@@ -9,7 +13,6 @@ export function buildGraph(src: Xml.Element) : ControlFlowGraph {
     loopJumps = [];
     labelNodes = new Map<string, ControlFlowNode>();
     gotoJumps = [];
-    // TODO: Label Jumps
     
     const graph = new ControlFlowGraph();
 
@@ -17,7 +20,7 @@ export function buildGraph(src: Xml.Element) : ControlFlowGraph {
     if (node) {
         graph.addAllNodes(node, []);
         node.type = 'START';
-        for (const endNode of node.tail) {
+        for (const endNode of node.getLeafNodes()) {
             endNode.type = 'END';
         }
     }
@@ -222,7 +225,7 @@ function buildSwitch(switchStmt: Xml.Element) : ControlFlowNode {
         cond.addAdjacent(caseNode);
 
         const hasBreak: boolean = caseNode.getTail()[0].xml.name === "break";
-        if (!hasBreak && index !== casesXml.length - 1) cond.popTailNode(); // TODO: Review this
+        if (!hasBreak && index !== casesXml.length - 1) cond.popTailNode();
 
         prevCase = hasBreak ? null : caseNode;  
     }

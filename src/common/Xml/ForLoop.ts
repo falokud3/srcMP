@@ -101,7 +101,7 @@ export class ForLoop extends XmlElement {
                 || ['++', '--'].includes(access.nextElement?.text ?? "") ;
             if (hasUnaryAssignment && newAccesses.length < 2) {
                 newAccesses.push(new ArrayAccess(access, 
-                    newAccesses[0].getAccessType() === ArrayAccess.READ_ACCESS ? 
+                    newAccesses[0].access_type === ArrayAccess.READ_ACCESS ? 
                     ArrayAccess.WRITE_ACCESS : ArrayAccess.READ_ACCESS ));
             }
 

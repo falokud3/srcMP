@@ -1,4 +1,8 @@
-// import chalk from 'chalk';
+/**
+ * Interface for outputting messages to the console. Controls the verbosity
+ * global variable
+ */
+
 import wrapAnsi from 'wrap-ansi';
 import chalk from "chalk";
 import * as Xml from './Xml/Xml.js';
@@ -6,7 +10,6 @@ import * as Xml from './Xml/Xml.js';
 export interface CLIMessage  {
     
     /**
-     * 
      * @returns the message formatted as it would be on the command line
      */
     format: (verbosity: Verbosity) => string;
@@ -35,7 +38,7 @@ export function log(message: string, verbosity: Verbosity = Verbosity.Basic) {
 }
 
 /**
- * Shorthand for yellow message at the Simple verboisty level
+ * Shorthand for yellow message at the Basic verboisty level
  * @param message 
  */
 export function warn(message: string) {
@@ -55,13 +58,17 @@ export const Verbosity = {
     Basic: 1,
     Internal: 2,
 } as const;
-
 export type Verbosity = typeof Verbosity[keyof typeof Verbosity];
 
+// Global verbosity setting
 let verbositySetting : Verbosity = Verbosity.Basic;
 
+// sets the global verboisty setting
 export const setVerbosity = (verbosity: Verbosity) => {verbositySetting = verbosity;};
 
+/**
+ * Functions useful for generating compiler messages
+ */
 export const errorStart = (numIssues: number) =>  numIssues !== 0 ? 'And the' : 'Because the';
 export const numFormat = (amount: number, word: string) => amount === 1 ? `1 ${word}` 
    : `${amount} ${word}s`;

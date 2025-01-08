@@ -3,7 +3,7 @@ import { CLIMessage, Verbosity, examples, output, log } from '../../common/Comma
 import { DataDependenceGraph } from "../DataDependenceTesting/DataDependenceGraph.js";
 import { Direction } from "../DataDependenceTesting/DependenceVector.js";
 import { extractOutermostDependenceTestEligibleLoops } from "../DataDependenceTesting/Eligibility.js";
-import { collectScalarDependencies } from "../DataDependenceTesting/ScalarDependenceTest.js";
+import { collectScalarDependencies } from "./ScalarDependenceTest.js";
 import * as Xml from '../../common/Xml/Xml.js';
 import { createXml } from "../../common/srcml.js";
 
@@ -35,7 +35,7 @@ function removeExistingPragmas(program: Xml.Element) : void {
 function insertPragmas(program: Xml.Element, analyzedLoops: ParallelizableStatus[]) : void {
     const parallelizedLoops = analyzedLoops.filter((loopStatus) => loopStatus.isParallelizable && !loopStatus.parallelizableOuterLoop);
     const language = program.get("/xmlns:unit")!.getAttribute("language")!;
-    const pragmaXML = createXml('#pragma omp parallel for', language)!;
+    const pragmaXML = createXml('#pragma omp parallel for', language);
     for (const loopStatus of parallelizedLoops) {
         loopStatus.loop.insertBefore(pragmaXML.copy());
         loopStatus.loop.insertBefore( loopStatus.loop.domNode.ownerDocument.createTextNode('\n'));

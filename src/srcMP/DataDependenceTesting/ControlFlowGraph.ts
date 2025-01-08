@@ -1,7 +1,11 @@
+/**
+ * Control Flow Graph used to determine if an array access is reachable for
+ * dependence analysis. Can also be used for range analysis.
+ */
+
 import * as Xml from '../../common/Xml/Xml.js';
 import { buildGraph } from './ControlFlowGraphBuilder.js';
 
-// ! doesn't support labels and goto statements
 export class ControlFlowGraph {
 
     public nodes: ControlFlowNode[];
@@ -14,6 +18,10 @@ export class ControlFlowGraph {
         if (!this.nodes.includes(node)) this.nodes.push(node);
     }
 
+    /**
+     * Outputs the Graph in DOT Language, which can be easily vizualized
+     * through Graphviz
+     */
     public toString() {
         let ret: string = "digraph {\n";
 
@@ -30,9 +38,15 @@ export class ControlFlowGraph {
         return ret;
     }
 
+    /**
+     * Uses DFS to add all nodes connected to the input node to the CFG's
+     * nodes array.
+     * @param node node to traverse and add to the graph
+     * @param visited nodes that have already been added or should not be added to the graph
+     */
     public addAllNodes(node: ControlFlowNode, visited: number[]) : void {
         this.addNode(node);
-        for (const adjNode of node.adjacents) {
+        for (const adjNode of node.edges) {
             this.addNode(adjNode);
             if (!visited.includes(adjNode.num)) {
                 visited.push(adjNode.num);
@@ -41,9 +55,10 @@ export class ControlFlowGraph {
         }
     }
 
+    // helper method
     private static rTopologicalSort(node: ControlFlowNode, visited: number[], newOrder: ControlFlowNode[]) {
         visited.push(node.num);
-        for (const child of node.adjacents) {
+        for (const child of node.edges) {
             if (!visited.includes(child.num)) {
                 this.rTopologicalSort(child, visited, newOrder);
             }
@@ -66,19 +81,23 @@ export class ControlFlowGraph {
         this.nodes = newOrder;
     }
 
+    /**
+     * Returns true if stmt1 can reach stmt2. Attempts to do this by finding
+     * the nodes that correlate to the XML elements. It then uses topologicalSort
+     * to determine reachability
+     * ! NOT A VERY ROBUST APPROACH AND IS LIKELY TO HAVE ISSUES!
+     */
     public isReachable(stmt1: Xml.Element, stmt2: Xml.Element) : boolean {
         
         let from: ControlFlowNode | null = null;
         let to: ControlFlowNode | null = null;
 
-        // ! HACKY AND BAD
         const s1 = stmt1.parentElement;
         const s2 = stmt2.parentElement;
 
         if (!s1 || !s2) return true;
 
         for (const node of this.nodes) {
-            // ! POTENTIAL ISSUE WITH IDENTICAL STATEMENTS
             if (node.xml.text === s1.text) from = node;
 
             if (node.xml.text === s2.text) to = node;
@@ -94,44 +113,23 @@ export class ControlFlowGraph {
     public static buildControlFlowGraph(src: Xml.Element) : ControlFlowGraph {
         return buildGraph(src);
     }
-
-    public static getSubKeys(node: Xml.Element) : string[] {
-        const ret: string[] = [];
-
-        for (const child of node.childElements) {
-            ret.push(`${child.line} ${child.text}`);
-            ret.push(...ControlFlowGraph.getSubKeys(child));
-        }
-
-        return ret;
-    }
-
-
-    public static getIndexOfFirstNodeTopographically(list: ControlFlowNode[]) : number {
-        let index: number = 0;
-        for (let i = 1; i < list.length; i++) {
-            if (list[i].getOrder() < list[index].getOrder()) {
-                index = i;
-            }
-        }
-        return index;
-    }
 }
-
-
 
 export class ControlFlowNode {
     type: 'START' | 'NODE' | 'END' = 'NODE';
     private static maxID: number = 1;
 
-    private _tail: ControlFlowNode[] = []; // used exclusively for build process then deleted
+    /**
+     * variables used in the build process that should not be used elsewhere. 
+     * Should be refacotred to be in the ControlFlowGraphBUilder file
+    */
+    private _tail: ControlFlowNode[] = [];
     private connectable: boolean = true;
 
     public xml: Xml.Element;
     
 
-    private outEdges: ControlFlowNode[] = [];
-    private inEdges: ControlFlowNode[] = [];
+    private _edges: ControlFlowNode[] = [];
 
     private order: number = -1; // topological order
 
@@ -142,10 +140,9 @@ export class ControlFlowNode {
         this._idNum = ControlFlowNode.maxID++;
     }
 
-    // this extending tail
+    // this extends tail
     public addAdjacent(node: ControlFlowNode) {
-        if (!this.outEdges.includes(node)) this.outEdges.push(node);
-        if (!node.inEdges.includes(this)) node.inEdges.push(this);
+        if (!this._edges.includes(node)) this._edges.push(node);
         for (const tailNode of node.getTail()) {
             if (!this._tail.includes(tailNode)) this._tail.push(tailNode);
         }
@@ -163,41 +160,34 @@ export class ControlFlowNode {
         if (updateTail) from._tail = to.getTail();
     }
 
-    public get tail() : ControlFlowNode[] {
-        // TODO: Include Manual Overide for loops etc
+    public getLeafNodes() : ControlFlowNode[] {
         const tailNodes: ControlFlowNode[] = [];
-        this.rGetTail(tailNodes, []);
+        this.rGetLeafNodes(tailNodes, []);
         return tailNodes;
     }
 
-    private rGetTail(tailNodes: ControlFlowNode[], visited: number[]) {
-        // TODO: Optional worry about adding duplicates to tailNodes
+    // DFS
+    private rGetLeafNodes(leafNodes: ControlFlowNode[], visited: number[]) {
         if (visited.includes(this.num)) {
             return; 
         } else {
             visited.push(this.num);
         }
 
-        if (this.outEdges.length === 0) tailNodes.push(this);
-        for (const vertex of this.outEdges) { 
-            vertex.rGetTail(tailNodes, visited);
+        if (this._edges.length === 0) leafNodes.push(this);
+        for (const vertex of this._edges) { 
+            vertex.rGetLeafNodes(leafNodes, visited);
         }
     }
 
 
-
     // tail are all the nodes without outgoing edge
     public getTail() : ControlFlowNode[] {
-        // TODO: utilize this.tail()
         return this._tail.length > 0 ? this._tail : [this];
     }
 
     public setTail(newTail: ControlFlowNode[]) : void {
         this._tail = newTail;
-    }
-
-    public setConnectable(val: boolean) : void {
-        this.connectable = val;
     }
 
     public addTailNode(node: ControlFlowNode) : void {
@@ -208,8 +198,13 @@ export class ControlFlowNode {
         this._tail.pop();
     }
 
-    public get adjacents() : ControlFlowNode[] {
-        return this.outEdges;
+    // Sets whether new edges should be added to this node
+    public setConnectable(val: boolean) : void {
+        this.connectable = val;
+    }
+
+    public get edges() : ControlFlowNode[] {
+        return this._edges;
     }
 
     public get num() : number {
@@ -224,20 +219,6 @@ export class ControlFlowNode {
         this.order = order;
     }
 
-    public get preds() : ControlFlowNode[] {
-        return this.inEdges;
-    }
-
-    public get succs() : ControlFlowNode[] {
-        return this.outEdges;
-    }
-    
-    public toString() : string {
-        let ret: string = "";
-        ret += this._idNum + " " + this.xml.name;
-        return ret;
-    }
-
     public nodeInfoToString() : string {
         let ret = "";
         ret += `node${this._idNum} [label="#${this.order}\\n<${this.xml.name}>\\n`;
@@ -246,11 +227,11 @@ export class ControlFlowNode {
     }
 
     public nodeEdgesToString() : string {
-        if (this.outEdges.length === 0) return "";
+        if (this._edges.length === 0) return "";
 
         let ret = `node${this._idNum}->{ `;
 
-        for (const adj of this.outEdges) {
+        for (const adj of this._edges) {
             ret += `node${adj._idNum} `;
         }
 

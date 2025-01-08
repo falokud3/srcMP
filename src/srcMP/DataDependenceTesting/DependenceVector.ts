@@ -2,11 +2,11 @@ import * as Xml from '../../common/Xml/Xml.js';
 
 class DependenceVector {
 
-    //TODO: remove Xml.Element version
+    //TODO: Refactor to only use one - there's a reason I did this, but I forget (regardless it seems very poorly written)
     private directionVector: Map<Xml.Element, number> = new Map<Xml.Element, number>();
     private dirVec: Map<string, number> = new Map<string, number>();
 
-    private _valid: boolean = true;
+    public valid: boolean = true;
 
     public constructor(loop_nest: Xml.Element[] = []) {
         loop_nest.forEach( (loop: Xml.Element) => {
@@ -15,18 +15,10 @@ class DependenceVector {
         });
     }
 
-    public get valid() : boolean {
-        return this._valid;
-    }
-
-    public set valid(value: boolean) {
-        this._valid = value;
-    }
-
-    public get loops() : Xml.ForLoop[] {
-        return Array.from(this.directionVector.keys()) as Xml.ForLoop[];
-    }
-
+    /**
+     * Returns true if the first non NIL, *, = direction is <
+     * If there are no < or >, it allows returns true.
+     */
     public get isPlausibleVector() : boolean {
         for (const vector of this.directionVector) {
             if (vector[1] === Direction.greater.valueOf()) return false;
@@ -35,6 +27,10 @@ class DependenceVector {
         return true;
     }
 
+    /** 
+     * Returns a version of the dependece vector where 
+     * all the > to < and all the < to > in the direction vector
+     */
     public get reverseVector() : DependenceVector {
         const ret = this.clone();
         for (const vector of this.directionVector) {
@@ -78,12 +74,12 @@ class DependenceVector {
         const clone = new DependenceVector();
         clone.directionVector = new Map(this.directionVector);
         clone.dirVec = new Map(this.dirVec);
-        clone._valid = this._valid;
+        clone.valid = this.valid;
         return clone;
     }
 
     public equals(other: DependenceVector) : boolean {
-        if (this._valid !== other._valid) return false;
+        if (this.valid !== other.valid) return false;
 
         for (const entry of this.dirVec) {
             if (other.dirVec.get(entry[0]) !== entry[1]) return false;
@@ -102,7 +98,8 @@ class DependenceVector {
 
     public mergeWith(other: DependenceVector) : void {
         let newDir: Direction;
-        for (const loop of other.loops) {
+        const loops =  Array.from(this.directionVector.keys()) as Xml.ForLoop[];
+        for (const loop of loops) {
             if (!this.dirVec.has(loop.toString())) {
                 this.directionVector.set(loop, other.getDirection(loop)!);
                 this.dirVec.set(loop.toString(), other.getDirection(loop)!);
@@ -127,7 +124,6 @@ export function mergeVectorSets(dvs: DependenceVector[], other: DependenceVector
     }
 
     let size = dvs.length;
-    // TODO: INVESTIGATE ThIS ALGORITHM
     while (size-- > 0) {
         const dv = dvs.shift()!;
         for (let i = 0; i < other.length; i++) {
@@ -146,7 +142,6 @@ export enum Direction {
     equal, 
     greater,
 }
-
 function directionToString(dir: Direction) : string {
     switch (dir) {
         case Direction.nil:
