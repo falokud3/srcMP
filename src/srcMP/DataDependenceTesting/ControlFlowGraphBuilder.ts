@@ -245,8 +245,6 @@ function buildWhile(whileStmt: Xml.Element) : ControlFlowNode {
 
     condNode.setTail([]); 
 
-    condNode.loopVariants = whileStmt.defSymbols;
-
     resolveLoopJumps(condNode, condNode);
 
     return condNode;
@@ -278,8 +276,6 @@ function buildFor(forstmt: Xml.Element) : ControlFlowNode {
 
     resolveLoopJumps(incrNode, initNode);
 
-    condNode.loopVariants = forstmt.defSymbols;
-
     return initNode;
 }
 
@@ -291,8 +287,6 @@ function buildDo(doStmt: Xml.Element) : ControlFlowNode {
     // condition
     const conditionXML = doStmt.get("./xmlns:condition")!;
     const condNode = buildNode(conditionXML)!;
-
-    condNode.loopVariants = doStmt.defSymbols;
 
     ControlFlowNode.connectNodes(blockNode, condNode);
     ControlFlowNode.connectNodes(condNode, blockNode, false);

@@ -1,6 +1,5 @@
 import * as Xml from '../../common/Xml/Xml.js';
 import { buildGraph } from './ControlFlowGraphBuilder.js';
-import { RangeDomain } from './RangeDomain.js';
 
 // ! doesn't support labels and goto statements
 export class ControlFlowGraph {
@@ -96,24 +95,6 @@ export class ControlFlowGraph {
         return buildGraph(src);
     }
 
-    // private substituteAll(src: Xml.Element) : Xml.Element {
-    //     throw new Error("NOT IMPLEMEnteD");
-    // }
-
-    public getRangeMap() : Map<string, RangeDomain> {
-        const ret = new Map<string, RangeDomain>();
-
-        for (const node of this.nodes) {
-            const ranges = node.getRanges();
-            ret.set(`${node.xml.line} ${node.xml.text}`, ranges);
-            for (const subkey of ControlFlowGraph.getSubKeys(node.xml)) {
-                ret.set(subkey, ranges);
-            }
-        }
-
-        return ret;
-    }
-
     public static getSubKeys(node: Xml.Element) : string[] {
         const ret: string[] = [];
 
@@ -155,16 +136,6 @@ export class ControlFlowNode {
     private order: number = -1; // topological order
 
     private _idNum: number; // for toDot ouptut 
-
-    // TODO: Refactor into one range object 
-    // [in, curr, out]
-    public inRanges: Map<ControlFlowNode, RangeDomain> = new Map<ControlFlowNode, RangeDomain>();
-    private currRanges: RangeDomain = new RangeDomain(); // TODO: Remove
-    public outRanges: Map<ControlFlowNode, RangeDomain> = new Map<ControlFlowNode, RangeDomain>();
-
-    // TODO: Somehow move all this RangeAnalysis gunk out
-    private backedge: boolean | undefined;
-    public loopVariants: Set<Xml.Element> | undefined = undefined;
 
     public constructor(data: Xml.Element) {
         this.xml = data;
@@ -261,28 +232,6 @@ export class ControlFlowNode {
         return this.outEdges;
     }
     
-    public getRanges() : RangeDomain {
-        return this.currRanges;
-    }
-
-    public setRanges(newRanges: RangeDomain) : void {
-        this.currRanges = newRanges;
-    }
-
-    public hasBackedge() : boolean {
-        return this.backedge ?? this.setBackedge();
-    }
-
-    public setBackedge() : boolean {
-        for (const pred of this.inEdges) {
-            if (this.order < pred.order) {
-                this.backedge = true;
-                return true;
-            }
-        }
-        return false;
-    }
-
     public toString() : string {
         let ret: string = "";
         ret += this._idNum + " " + this.xml.name;
@@ -293,7 +242,6 @@ export class ControlFlowNode {
         let ret = "";
         ret += `node${this._idNum} [label="#${this.order}\\n<${this.xml.name}>\\n`;
         ret += `${this.xml.text.trim()}\\n`;
-        ret += `${this.currRanges.toString()}\\n"]`;
         return ret;
     }
 

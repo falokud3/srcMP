@@ -2,6 +2,5 @@ node_modules/
 build/
 eval/benchmarks
 .DS_Store
-.vscode
 benchmarks/NPB2.3-omp-C
 tests/out

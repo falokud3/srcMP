@@ -29,7 +29,6 @@
     "watch:esbuild": "node esbuild.js --watch",
     "watch:esbuild-ext": "node esbuild.js --extension --watch",
     "watch:tsc": "npx tsc --noEmit --watch --project tsconfig.json",
-    "package": "npm run check-types && npm run lint && node esbuild.js --production && node esbuild.js --extension --production",
     "check-types": "npx tsc --noEmit",
     "lint": "npx eslint src"
   },

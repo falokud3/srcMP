@@ -1,0 +1,32 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "node",
+            "request": "launch",
+            "name": "srcMP",
+            "program": "build/srcMP/srcmp.cjs",
+            "args": ["tests/srcMP/cpp/InelligibleLoop.cpp", "-v 2", "--noEmit"],
+            "preLaunchTask": "npm: compile"
+        },
+        {
+            "type": "node",
+            "request": "launch",
+            "name": "Divergence Testing",
+            "program": "build/DivergenceTesting/DivergenceTesting.js",
+            "preLaunchTask": "typescript compile",
+            "args": ["tests/divergenceTests/test.cu"]
+        },
+        {
+            "type": "node",
+            "request": "launch",
+            "name": "benchmark",
+            "program": "build/benchmarks/Benchmark.js",
+            "preLaunchTask": "typescript compile",
+            "args": ["benchmarks/NPB2.3-omp-C/CG/cg.c"]
+        },
+    ]
+}
