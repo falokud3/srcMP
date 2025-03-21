@@ -338,9 +338,6 @@ function parseDevices(filePaths: string[]) : Device[] {
  * @returns exit code
  */
 function main() : number {
-
-    return 0;
-
     const program = new Command();
 
     program.name('srcsim')
