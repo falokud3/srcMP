@@ -4,14 +4,12 @@ class DependenceVector {
 
     //TODO: Refactor to only use one - there's a reason I did this, but I forget (regardless it seems very poorly written)
     private directionVector: Map<Xml.Element, number> = new Map<Xml.Element, number>();
-    private dirVec: Map<string, number> = new Map<string, number>();
 
     public valid: boolean = true;
 
     public constructor(loop_nest: Xml.Element[] = []) {
         loop_nest.forEach( (loop: Xml.Element) => {
             this.directionVector.set(loop, Direction.any);
-            this.dirVec.set(loop.text, Direction.any);
         });
     }
 
@@ -20,9 +18,9 @@ class DependenceVector {
      * If there are no < or >, it allows returns true.
      */
     public get isPlausibleVector() : boolean {
-        for (const vector of this.directionVector) {
-            if (vector[1] === Direction.greater.valueOf()) return false;
-            else if (vector[1] === Direction.less.valueOf()) return true;
+        for (const vector of this.directionVector.values()) {
+            if (vector === Direction.greater.valueOf()) return false;
+            else if (vector === Direction.less.valueOf()) return true;
         }
         return true;
     }
@@ -44,16 +42,22 @@ class DependenceVector {
     }
 
     public setDirection(loop: Xml.Element, dir: Direction) {
+        for (const key of this.directionVector.keys()) {
+            if (key.text === loop.text) {
+                this.directionVector.set(key, dir);
+                return;
+            }
+        }
         this.directionVector.set(loop, dir);
-        this.dirVec.set(loop.text, dir);
     }
 
-    public getDirection(loop: Xml.Element, string_version: boolean = true) : Direction | undefined {
-        if (string_version) {
-            return this.dirVec.get(loop.text);
-        } else {
-            return this.directionVector.get(loop);
+    public getDirection(loop: Xml.Element) : Direction | undefined {
+        for (const key of this.directionVector.keys()) {
+            if (key.text === loop.text) {
+                return this.directionVector.get(key);
+            }
         }
+        return undefined;
     }
 
     public containsDirection(keyDir: Direction) : boolean {
@@ -73,7 +77,6 @@ class DependenceVector {
     public clone(): DependenceVector {
         const clone = new DependenceVector();
         clone.directionVector = new Map(this.directionVector);
-        clone.dirVec = new Map(this.dirVec);
         clone.valid = this.valid;
         return clone;
     }
@@ -81,8 +84,8 @@ class DependenceVector {
     public equals(other: DependenceVector) : boolean {
         if (this.valid !== other.valid) return false;
 
-        for (const entry of this.dirVec) {
-            if (other.dirVec.get(entry[0]) !== entry[1]) return false;
+        for (const entry of this.directionVector) {
+            if (other.getDirection(entry[0])?.valueOf() !== entry[1]) return false;
         }
 
         return true;
@@ -95,14 +98,23 @@ class DependenceVector {
         }
         return ret.join(',');
     }
+    
+    private hasKey(searchKey: Xml.Element) : boolean {
+        for (const key of this.directionVector.keys()) {
+            if (key.text === searchKey.text) {
+                return true;
+            }
+        }
+        return false;
+    }
 
     public mergeWith(other: DependenceVector) : void {
         let newDir: Direction;
         const loops =  Array.from(this.directionVector.keys()) as Xml.ForLoop[];
         for (const loop of loops) {
-            if (!this.dirVec.has(loop.toString())) {
+            this.directionVector.keys()
+            if (!this.hasKey(loop)) {
                 this.directionVector.set(loop, other.getDirection(loop)!);
-                this.dirVec.set(loop.toString(), other.getDirection(loop)!);
                 continue;
             }
             
@@ -112,7 +124,6 @@ class DependenceVector {
             newDir = thisDir !== Direction.nil ? cartesianProduct[thisDir][thatDir] : Direction.nil;
             if (newDir === Direction.nil) this.valid = false;
             this.directionVector.set(loop, other.getDirection(loop)!);
-            this.dirVec.set(loop.toString(), other.getDirection(loop)!);
         }
     }
 }
@@ -134,7 +145,6 @@ export function mergeVectorSets(dvs: DependenceVector[], other: DependenceVector
     }
 }
 
-// TODO: Refactor
 export enum Direction {
     nil = -1,
     any = 0, 
