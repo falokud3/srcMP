@@ -122,7 +122,7 @@ export class ForLoop extends XmlElement {
 
     public get upperboundExpression() : string | number {
         const xmlCondOp = this.get('xmlns:control/xmlns:condition/xmlns:expr/xmlns:operator');
-        if (!xmlCondOp) throw new Error("UpperBoundExpression Missing Condition"); //TODO: change this
+        if (!xmlCondOp) throw new Error("UpperBoundExpression Missing Condition");
         const condOp = xmlCondOp.text;
         const step = getCanonicalIncrementValue(this);
         const rhs = Xml.getRHSFromOp(xmlCondOp).text;
@@ -145,7 +145,6 @@ export class ForLoop extends XmlElement {
             return num;
         }
 
-        // TODO: RANGE ANALYSIS
         // RangeAnalysis.query(xmlCondOp)?.substituteForward(ub);
         return ub;
 
@@ -164,7 +163,7 @@ export class ForLoop extends XmlElement {
 
         const exprString = CAS.simplify(expr.text);
         const exprNum = Number(exprString);
-        // TODO: Range Analysis
+        // Range analysis could be used here
         return !Number.isNaN(exprNum) ? exprNum : exprString;
     }
 
@@ -225,7 +224,7 @@ export function getCanonicalIncrementValue(loop: Xml.ForLoop): number | string {
  * * integer-type indexVar = lb
  */
 export function getCanonicalIndexVariable(loop: Xml.ForLoop): Xml.Element | null {
-// TODO: check if variable is type int and allow for declarations outside init
+    // TODO: check if variable is type int and allow for declarations outside init
    const init = loop.initialization;
    // handles having no init and multiple init scenarios
    if (init.childElements.length !== 1) return null;

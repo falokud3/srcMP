@@ -2,7 +2,6 @@ import esbuild from "esbuild"
 
 const production = process.argv.includes('--production');
 const watch = process.argv.includes('--watch');
-const extension = process.argv.includes('--extension');
 
 /**
  * @type {import('esbuild').Plugin}
@@ -26,18 +25,19 @@ const esbuildProblemMatcherPlugin = {
 
 async function main() {
 	const ctx = await esbuild.context({
-		entryPoints: extension ? ['src/ext/extension.ts'] : [
+		entryPoints: [
 			'src/srcMP/srcmp.ts',
-			'src/srcSim/srcsim.ts',	
+			'src/srcSim/srcsim.ts',
+			'eval/analyze_results.ts'
 		],
 		bundle: true,
 		format: 'cjs',
-		outExtension: extension ? {} : { '.js': '.cjs' },
+		outExtension: { '.js': '.cjs' },
 		minify: production,
 		sourcemap: !production,
 		sourcesContent: false,
 		platform: 'node',
-		outdir: extension ? './build/ext' : './build',
+		outdir: './build',
 		external: ['vscode'], // excludes code from bundle
 		logLevel: 'silent',
 		plugins: [

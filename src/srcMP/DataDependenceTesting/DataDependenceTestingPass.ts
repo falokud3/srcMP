@@ -56,7 +56,7 @@ function analyzeLoopForDependence(loopNode: Xml.ForLoop) : DDGraph {
             // // handles edge case where loop being analyzed is not the outermost loop
             relevantLoopNest = Xml.ForLoop.getCommonLoops(relevantLoopNest, innerLoopNest);
 
-            // TODO: Substitute Range Info
+            // Range Analysis could be used here
 
             pairDepVectors = [];
             const dependenceExists: boolean = testAccessPair(accessI, accessJ, 
@@ -99,7 +99,7 @@ function testSubscriptBySubscript(access: ArrayAccess, other_access: ArrayAccess
    const dimensions = access.getArrayDimensionality();
 
    for (let dim = 1; dim <= dimensions; dim++) {
-      // TODO: RANGE SUBSTITUTION
+      // Range analysis could be used here
       const pair = new SubscriptPair(
          access.getDimension(dim)!,
          other_access.getDimension(dim)!,

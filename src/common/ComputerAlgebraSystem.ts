@@ -41,19 +41,17 @@ export function safeSimplify(expression: string) {
     expression = expression.replace(/([\w\*\&\[\]\.\(\)]+)\s*--/gm, '$1');
     expression = expression.replace(/--\s*([\w\*\&\[\]\.\(\)]+)/gm, '$1');
 
-    // TODO: convert . expressions to variables
-    // TODO: deconvert variables to expressions
+    // TODO: convert . expressions to mathematical variables for computation and then deconvert after the computation
 
     return simplify(expression);
 
 }
 
-// TODO: REMOVE split into simply and  create XML
 export function simplifyXml(expression: Xml.Element) : Xml.Element | null {
     let newExpression = safeSimplify(expression.text);
     if (newExpression === "nil") return expression;
 
-    // srcml currently has a bug that causes errors when parsing text leading with "-"
+    // ! srcml currently has a bug that causes errors when parsing text leading with "-"
     if (newExpression.startsWith("-")) {
         newExpression = `(${newExpression})`;
     }
@@ -61,7 +59,7 @@ export function simplifyXml(expression: Xml.Element) : Xml.Element | null {
     const language = expression.get("/xmlns:unit")?.getAttribute("language") ?? "";
     const buffer = execSync(`srcml --text ${newExpression} --language ${language}`, {timeout: 10000});
     const bufferRoot = Xml.parseXmlString(buffer.toString());
-    if (!bufferRoot) throw new Error("TODO"); // TODO: Write better error
+    if (!bufferRoot) throw new Error("Failed to generate simplified XML.");
     return bufferRoot.get("./xmlns:expr");
 }
 
@@ -72,18 +70,11 @@ export function invertExpression(toXml: Xml.Element, from: Xml.Element) : Xml.El
 
     let inverted = simplify(`${toXml.text} + (${diff})`);
 
-    // srcml currently has a bug that causes errors when parsing text leading with "-"
+    // ! srcml currently has a bug that causes errors when parsing text leading with "-"
     if (inverted.startsWith("-")) {
         inverted = `(${inverted})`;
     }
     
-    // const newExpr = Number(diff)
-    // // srcML won't parse solo negative numbers like -1
-    // if (newExpr < 0) {
-    //     const exprXML = `<expr><operator>-</operator><literal type="number">${Math.abs(newExpr)}</literal></expr>`;
-    //     return Xml.parseXmlString(exprXML);
-    // }
-
     const language = toXml.get("/xmlns:unit")?.getAttribute("language") ?? "";
     const buffer = execSync(`srcml --text "${inverted}" --language ${language}`, {timeout: 10000});
     const rhsRoot = Xml.parseXmlString(buffer.toString());

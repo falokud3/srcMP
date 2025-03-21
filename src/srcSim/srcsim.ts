@@ -27,7 +27,6 @@ type Device = {
 }
 
 
-// TODO: Try both
 function formatOP(op: string) : string {
     switch (op) {
         case '+':
@@ -339,6 +338,9 @@ function parseDevices(filePaths: string[]) : Device[] {
  * @returns exit code
  */
 function main() : number {
+
+    return 0;
+
     const program = new Command();
 
     program.name('srcsim')

@@ -3,8 +3,6 @@ import { execSync } from "child_process";
 
 import * as Xml from './Xml.js';
 
-// TODO: Refactor
-
 export function hasAugAssignmentOperator(xml: XmlElement) : boolean {
     const op = xml.get("./xmlns:operator");
 

@@ -89,7 +89,6 @@ function hasCanonicalCondition(loop: Xml.ForLoop, indexVariable: Xml.Element): b
 
    const conditionExpression = loop.condition.child(0)!;
 
-   // TODO: Allow for != case wehre incr-expr == 1
    const operators = conditionExpression.find("./xmlns:operator");
    operators.filter((op: Xml.Element) => {
       return ["&lt;", "&gt;", "&lt;=", "&gt;="].includes(op.text);
