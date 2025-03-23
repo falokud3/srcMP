@@ -40,6 +40,15 @@ export function extractOutermostDependenceTestEligibleLoops(root: Xml.Element): 
    return [ret, messages];
 }
 function isLoopTestEligible(loop: Xml.ForLoop): [boolean, EligiblityMessage] {
+   // TODO: Temporary, need to replace this whole approach with the MLP
+   const language = loop.get("/xmlns:unit")?.getAttribute("language");
+   if (!language) {
+      // TODO: need to update message
+      return [false, new EligiblityMessage(loop)];
+   } else if (language === "Python3") {
+      return isLoopTestEligiblePython(loop);
+   }
+
    const message = new EligiblityMessage(loop);
    
    const isCanonical = isCanonicalLoop(loop, message);
@@ -157,6 +166,60 @@ function hasCanonicalBody(loop: Xml.ForLoop, indexVariable: Xml.Element): boolea
    return !isIVRedefined && !body.contains(".//xmlns:break")
       && !body.contains(".//xmlns:continue") && !body.contains(".//xmlns:return")
       && !body.contains(".//xmlns:label") && !body.contains(".//xmlns:goto");
+}
+
+/**
+ * Validating and extracting data from the control of Python loops
+ * <control><init><decl><name>i</name><range>in <call><name>range</name><argument_list>(<argument><expr><literal type="number">1000</literal></expr></argument>)</argument_list></call> <!-- <name>range</name> --></range></decl></init></control>
+ * @param loop 
+ */
+function isLoopTestEligiblePython(loop: Xml.ForLoop): [boolean, EligiblityMessage] {
+
+   const indexVariable = loop.get("./xmlns:control/xmlns:init/xmlns:decl/xmlns:name");
+   if (!indexVariable) {
+      return [false, new EligiblityMessage(loop)];
+   }
+   const message = new EligiblityMessage(loop);
+   message.indexVariable = indexVariable;
+
+
+   // message.indexVariable = indexVariable;
+   // message.hasCanonicalCondition = validCondition;
+   // message.hasCanonicalBody = validBody;
+
+   const containsMethodCall = loop.contains("./xmlns:block//xmlns:call");
+   // parse range() call for the loop index's incremental value 
+      // if no range call, set variable to null and return false
+   const range = loop.get("./xmlns:control/xmlns:init/xmlns:decl/xmlns:range");
+   const rangeCall = range?.get("./xmlns:call/xmlns:name");
+   if (!range || !rangeCall || rangeCall.text !== "range") {
+      message.indexVariable = null;
+      return [false, message];
+   }
+   // first look for named argument step
+   // second look for 3 argument
+   const argument = range.get("./xmlns:argument_list/xmlns:argument[name::text()='step']") 
+      || range.get("./xmlns:argument_list/xmlns:argument[3]");
+   
+   // if literal parse and set value, else set whole string to value
+   let incrementValue: string | number;
+   if (argument) {
+      const literal: string | number | undefined = argument.get("./xmlns:literal")?.text ||
+         argument.get("./xmlns:expr")?.text;
+      if (!literal) {
+         throw new Error("Unexpected srcML formatting");
+      }
+      incrementValue = isNaN(Number(literal)) ? literal : Number(literal);
+   } else {   // step defaults to 1 if not specified in range() call
+      incrementValue = 1;
+   }
+
+   message.containsMethodCall = containsMethodCall;
+   message.incrementValue = incrementValue;
+
+
+   const eligible = !containsMethodCall && typeof incrementValue === 'number';
+   return [eligible, message];
 }
 
 export class EligiblityMessage implements CLIMessage {
