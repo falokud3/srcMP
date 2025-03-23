@@ -112,7 +112,6 @@ class DependenceVector {
         let newDir: Direction;
         const loops =  Array.from(this.directionVector.keys()) as Xml.ForLoop[];
         for (const loop of loops) {
-            this.directionVector.keys()
             if (!this.hasKey(loop)) {
                 this.directionVector.set(loop, other.getDirection(loop)!);
                 continue;

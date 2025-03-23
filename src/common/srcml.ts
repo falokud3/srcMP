@@ -28,13 +28,15 @@ export function createXml(str: string, language: string) : Xml.Element {
  * @returns an xml object representing the file contents
  */
 export function getFileXml(srcPath: string) : Xml.Element {
-    
     const fileExtension = srcPath.substring(srcPath.lastIndexOf("."));
-    
-    if (fileExtension !== ".xml") {
-        const buffer = execSync(`srcml --position ${srcPath}`, {timeout: 10000, maxBuffer: 1024 * 1024 * 10});
+    if (fileExtension === ".xml") {
+        return Xml.parseXmlFile(srcPath);
+    } else if (fileExtension === ".py") {
+        // TODO: Store py2srcml location in configuration file instead of hardcoded
+        const buffer = execSync(`python3 py2srcML/py2srcml.py ${srcPath}`, {timeout: 10000, maxBuffer: 1024 * 1024 * 10});
         return Xml.parseXmlString(buffer.toString());
     } else {
-        return Xml.parseXmlFile(srcPath);
+        const buffer = execSync(`srcml --position ${srcPath}`, {timeout: 10000, maxBuffer: 1024 * 1024 * 10});
+        return Xml.parseXmlString(buffer.toString());
     }
 }

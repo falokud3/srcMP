@@ -170,7 +170,7 @@ export class BanerjeeTest {
         }
 
         for (const loop of this.loopnest) {
-            const dir = dv.getDirection(loop, true)!;
+            const dir = dv.getDirection(loop)!;
             const loopBounds = this.banerjeeBounds.get(loop.toString());
 
             banerjeeLB += loopBounds![dir + BanerjeeTest.LB];
