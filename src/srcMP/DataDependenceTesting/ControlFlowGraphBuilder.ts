@@ -29,7 +29,8 @@ export function buildGraph(src: Xml.Element) : ControlFlowGraph {
 }
 
 function buildNode(src: Xml.Element) : ControlFlowNode | null {
-    const type: string = src.name;
+    const type: string = src?.name;
+    if (!type) return null;
     if (type === "function") {
         return buildFunction(src);
     } else if (type === "block") {
@@ -63,7 +64,7 @@ function buildNode(src: Xml.Element) : ControlFlowNode | null {
         return ret;
     } else if (type === "case" || type === "default") {
         return buildCase(src);
-    } else if (type.includes("stmt") || type === "expr" || type === "decl") {
+    } else if (type.includes("stmt") || type === "expr" || type === "decl" || type === "range" || type === "call") {
         return new ControlFlowNode(src);
     } else if (type === "label") {
         return buildLabel(src);
@@ -255,6 +256,19 @@ function buildWhile(whileStmt: Xml.Element) : ControlFlowNode {
 
 // ! Assume for loop always has two semicolons
 function buildFor(forstmt: Xml.Element) : ControlFlowNode {
+    if ((forstmt as Xml.ForLoop).type === "RANGE") {
+        const initXml = forstmt.get("./xmlns:control/xmlns:init")!;
+        const initNode = buildNode(initXml)!;
+
+        const blockXml = forstmt.get("./xmlns:block")!;
+        const blockNode = buildBlock(blockXml);
+        ControlFlowNode.connectNodes(initNode, blockNode);
+        ControlFlowNode.connectNodes(blockNode, initNode, false);
+
+        initNode.setTail([]);
+        resolveLoopJumps(initNode, initNode);
+        return initNode;
+    }
 
     const initXml = forstmt.get("./xmlns:control/xmlns:init")!;
     const initNode = buildNode(initXml)!;

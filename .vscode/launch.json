@@ -8,8 +8,9 @@
             "type": "node",
             "request": "launch",
             "name": "srcMP",
-            "program": "build/srcMP/srcmp.cjs",
-            "args": ["examples/srcMP/cpp/ziv_pass.cpp", "-v 2", "--noEmit"],
+            "program": "build/src/srcMP/srcmp.cjs",
+            // "args": ["examples/srcMP/cpp/miv_fail.cpp", "-v 2", "--noEmit"],
+            "args": ["examples/srcMP/py/miv_pass.py", "-v 2", "--noEmit"],
             "preLaunchTask": "npm: compile"
         },
         {
@@ -17,7 +18,7 @@
             "request": "launch",
             "name": "py2srcml",
             "program": "py2srcML/py2srcml.py",
-            "args": ["examples/srcMP/py/inelligible.py"]
+            "args": ["examples/srcMP/py/miv_pass.py"]
         },
         {
             "type": "node",

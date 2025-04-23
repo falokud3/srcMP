@@ -1,6 +1,3 @@
-
-import { assert } from "console";
-
 import { ArrayAccess } from '../../srcMP/DataDependenceTesting/ArrayAccess.js';
 import XmlElement from "./Element.js";
 import * as Xml from './Xml.js';
@@ -10,12 +7,8 @@ import * as CAS from '../ComputerAlgebraSystem.js';
 export class ForLoop extends XmlElement {
 
     public constructor(domElement: Element) {
-        assert(domElement.tagName === "for");
+        if (domElement.tagName !== "for") throw new Error("Attempted to create ForLoop Object from non-for loop element.");
         super(domElement);
-    }
-
-    public static createLoop(element: XmlElement) {
-        return new ForLoop(element.domNode);
     }
 
     // gets the loopnest that surrounds this loop (includes loop)
@@ -49,13 +42,19 @@ export class ForLoop extends XmlElement {
 
     public get condition() : XmlElement {
         const cond = this.get("./xmlns:control/xmlns:condition");
-        if (!cond) throw new Error("SrcML is not properly formatted");
+        if (this.type === "RANGE") {
+            throw new Error("XML.ForLoop: Range based for loop, does not have a condition.");
+        } else if (!cond) {
+            throw new Error("SrcML is not properly formatted");
+        }
         return cond;
     }
 
     public get increment() : XmlElement {
         const incr = this.get("./xmlns:control/xmlns:incr");
-        if (!incr) throw new Error("SrcML is not properly formatted");
+        if (this.type === "RANGE") {
+            throw new Error("XML.ForLoop: Range based for loop, does not have a condition.");
+        } else if (!incr) throw new Error("SrcML is not properly formatted");
         return incr;
     }
 
@@ -66,8 +65,9 @@ export class ForLoop extends XmlElement {
     }
 
     public getLoopIndexVariableName() : XmlElement | null {
-        assert(this.name === "for");
-        return this.get("xmlns:control/xmlns:incr/xmlns:expr/xmlns:name");
+        return this.type === "STANDARD" 
+            ? this.get("xmlns:control/xmlns:incr/xmlns:expr/xmlns:name") 
+            : this.get("./xmlns:control/xmlns:init/xmlns:decl/xmlns:name");
     }
 
     /**
@@ -95,7 +95,7 @@ export class ForLoop extends XmlElement {
             } else {
                 newAccesses.push(new ArrayAccess(access, ArrayAccess.READ_ACCESS));
             }
-
+            // ! Python unary assignment
             const hasUnaryAssignment = ['++', '--'].includes(access.prevElement?.text ?? "") 
                 || ['++', '--'].includes(access.nextElement?.text ?? "") ;
             if (hasUnaryAssignment && newAccesses.length < 2) {
@@ -120,7 +120,54 @@ export class ForLoop extends XmlElement {
         });
     }
 
+    // range calls are either [start, stop, step] OR [stop]
+    public parseRangeCall() : {start: string|number, stop: string|number, step: string|number} {
+        const range = this.get("./xmlns:control/xmlns:init/xmlns:decl/xmlns:range");
+        if (!range) throw Error("ForLoop.parseRangeCall: Could not find range element");
+
+        const rangeArguments = range.find("./xmlns:call/xmlns:argument_list/xmlns:argument");
+        if (rangeArguments.length === 1) {
+            const stopXML = range.get("./xmlns:call/xmlns:argument_list/xmlns:argument[name::text()='stop']") 
+                ?? range.get("./xmlns:call/xmlns:argument_list/xmlns:argument[1]");
+            if (!stopXML) throw new Error("ForLoop.parseRangeCall: Could not find stop argument of range call.");
+
+            let stop: string | number = CAS.simplify(stopXML.text);
+            if (!Number.isNaN(stop)) stop = Number(stop);
+
+            return {
+                start: 0,
+                stop,
+                step: 1
+            };
+
+        }
+
+        const startXML = range.get("./xmlns:call/xmlns:argument_list/xmlns:argument[name::text()='start']") 
+            ?? range.get("./xmlns:argument_list/xmlns:argument[1]");
+        const stopXML = range.get("./xmlns:call/xmlns:argument_list/xmlns:argument[name::text()='stop']") 
+            ?? range.get("./xmlns:argument_list/xmlns:argument[2]");
+        const stepXML = range.get("./xmlns:call/xmlns:argument_list/xmlns:argument[name::text()='step']") 
+            ?? range.get("./xmlns:argument_list/xmlns:argument[3]");
+
+        if (!startXML || !stopXML || !stepXML) throw new Error("ForLoop.parseRangeCall: Missing range argument");
+
+        let start: string | number = CAS.simplify(startXML.text);
+        if (!Number.isNaN(start)) start = Number(start);
+
+        let stop: string | number = CAS.simplify(stopXML.text);
+        if (!Number.isNaN(stop)) stop = Number(stop);
+
+        let step: string | number = CAS.simplify(stepXML.text);
+        if (!Number.isNaN(step)) step = Number(step);
+
+
+        return {start, stop, step};
+
+    }
+
     public get upperboundExpression() : string | number {
+        if (this.type === "RANGE") return this.parseRangeCall().stop;
+
         const xmlCondOp = this.get('xmlns:control/xmlns:condition/xmlns:expr/xmlns:operator');
         if (!xmlCondOp) throw new Error("UpperBoundExpression Missing Condition");
         const condOp = xmlCondOp.text;
@@ -150,7 +197,17 @@ export class ForLoop extends XmlElement {
 
     }
 
+    public get type(): "STANDARD" | "RANGE" {
+        if (this.contains("./xmlns:control/xmlns:init/xmlns:decl/xmlns:range")) {
+            return "RANGE";
+        } else {
+            return "STANDARD";
+        }
+    }
+
     public get lowerboundExpression() : string | number {
+        if (this.type === "RANGE") return this.parseRangeCall().start;
+
         const init = this.initialization;
         let expr: Xml.Element | null = null;
         if (init.contains('xmlns:decl')) {
@@ -175,6 +232,7 @@ export class ForLoop extends XmlElement {
  * @param loop Loop in canonical form
  */
 export function getCanonicalIncrementValue(loop: Xml.ForLoop): number | string {
+    if (loop.type === "RANGE") return loop.parseRangeCall().step;
    const incrExpr = loop.increment.child(0);
    let incrStep: Xml.Element = loop;
    let isNegativeStep: boolean = false;
@@ -226,6 +284,11 @@ export function getCanonicalIncrementValue(loop: Xml.ForLoop): number | string {
 export function getCanonicalIndexVariable(loop: Xml.ForLoop): Xml.Element | null {
     // TODO: check if variable is type int and allow for declarations outside init
    const init = loop.initialization;
+    if (init.contains(".//xmlns:range")) {
+        const name = loop.get("./xmlns:control/xmlns:init/xmlns:decl/xmlns:name")!;
+        if (Xml.isComplexName(name)) return null;
+        return name;
+    }
    // handles having no init and multiple init scenarios
    if (init.childElements.length !== 1) return null;
 

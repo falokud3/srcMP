@@ -17,17 +17,23 @@ export function run(program: Xml.Element, programDDG: DataDependenceGraph) {
     for (const outerLoop of outerLoops) {
         messages.push(...parallelizeLoopNest(outerLoop, programDDG));
     }
-    removeExistingPragmas(program);
+    // removeExistingPragmas(program);
     output(...messages);    
-    insertPragmas(program, messages);
+    // insertPragmas(program, messages);
 
     const endTime = performance.now();
     log(`[Parallelizable Loop Detection] End -- Duration: ${(endTime - startTime).toFixed(3)}ms`, Verbosity.Internal);
 }
 
 function removeExistingPragmas(program: Xml.Element) : void {
-    const ompPragmas = program.find('//cpp:pragma[./omp:directive]');
-    for (const ompPragma of ompPragmas) {
+    const language = program.get("/xmlns:unit")!.getAttribute("language")!;
+    let ompPragmas: Xml.Element[] | undefined;
+    if (language === "C++") {
+        ompPragmas = program.find('//cpp:pragma[./omp:directive]');
+    }
+    // py2srcml skips comments
+    
+    for (const ompPragma of (ompPragmas ?? [])) {
         ompPragma.remove();
     }
 }

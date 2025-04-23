@@ -58,8 +58,14 @@ export class BanerjeeTest {
                 break;
             }
 
-            const coeff1 = this.getCoefficient(pair.getSubscript1().get('xmlns:expr')!.text, id);
-            const coeff2 = this.getCoefficient(pair.getSubscript2().get('xmlns:expr')!.text, id);
+            const coeff1 = this.getCoefficient(
+                pair.getSubscript1().get('xmlns:expr')?.text ?? pair.getSubscript1().child(0)!.text,
+                id
+            );
+            const coeff2 = this.getCoefficient(
+                pair.getSubscript2().get('xmlns:expr')?.text ?? pair.getSubscript2().child(0)!.text,
+                id
+            );
 
             if (typeof coeff1 !== 'number' || typeof coeff2 !== 'number') {
                 this.isTestEligible = false;
@@ -140,7 +146,13 @@ export class BanerjeeTest {
     }
 
     public getConstantCoefficient(subscript: Xml.Element, idList: string[]) : string {
-        const expression = subscript.get('xmlns:expr')!.text;
+        // Huge internal battle on how expressions should be formatted
+            // should <literal>1<\literal> be <expr><literal>1<\literal><expr>
+            // currently py2srcml does the former and srcML for the most part does the
+            // later
+        const expression = subscript.get('xmlns:expr')?.text
+            ?? subscript.child(0)?.text;
+        if (!expression) throw Error('Expression is null');
         let ret: string = expression;
         for (const id of idList) {
             // maybe use Algebrite filter instead

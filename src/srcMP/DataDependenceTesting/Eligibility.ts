@@ -214,6 +214,8 @@ function isLoopTestEligiblePython(loop: Xml.ForLoop): [boolean, EligiblityMessag
       incrementValue = 1;
    }
 
+   message.hasCanonicalBody = true;
+   message.hasCanonicalCondition = true;
    message.containsMethodCall = containsMethodCall;
    message.incrementValue = incrementValue;
 
@@ -312,7 +314,12 @@ export class EligiblityMessage implements CLIMessage {
       }
 
       if (this.indexVariable && !this.hasCanonicalCondition) {
-         body += `${errorStart(issues++)} loop's condition \u201C${this.loop.condition.text}\u201D is not in canonical from.\n`;
+         try {
+            body += `${errorStart(issues++)} loop's condition \u201C${this.loop.condition.text}\u201D is not in canonical from.\n`;
+         // eslint-disable-next-line @typescript-eslint/no-unused-vars
+         } catch (e) {
+            body += 'Issue in range based for loop\'s conition generation';
+         }
       }
       
       const ivDefs = this.indexVariableRedefinitions.map((redef: Xml.Element) => redef.parentElement ?? redef);
@@ -347,8 +354,14 @@ export class EligiblityMessage implements CLIMessage {
 
    public get internalFormat() : string {
       if (this.eligible) {
-         return `${chalk.green('Data Dependence Test Eligible')}: ${this.loop.line}:${this.loop.col}|${this.loop.header.text}
+         try {
+            return `${chalk.green('Data Dependence Test Eligible')}: ${this.loop.line}:${this.loop.col}|${this.loop.header.text}
 Init: ${this.indexVariable!.parentElement!.text} Cond: ${this.loop.condition.text} Step: ${this.incrementValue}`;
+         // eslint-disable-next-line @typescript-eslint/no-unused-vars
+         } catch (e) {
+            return `${chalk.green('Data Dependence Test Eligible')}: ${this.loop.line}:${this.loop.col}|${this.loop.header.text}`;
+         }
+
       }
 
       return `${this.buildComplexBody()}`;
