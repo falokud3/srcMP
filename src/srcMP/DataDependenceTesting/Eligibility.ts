@@ -303,7 +303,7 @@ export class EligiblityMessage implements CLIMessage {
 
    public buildComplexBody() : string {
 
-      let body = `${chalk.red('Data Dependence Test Inelligible')}: ${this.loop.line}:${this.loop.col}|${this.loop.header.text}\n`;
+      let body = `${chalk.red('Data Dependence Test Ineligible')}: ${this.loop.line}:${this.loop.col}|${this.loop.header.text}\n`;
       let issues = 0;
       if (!this.indexVariable) {
          body += `${errorStart(issues++)} the loop's index variable could not be determined.\n`;
