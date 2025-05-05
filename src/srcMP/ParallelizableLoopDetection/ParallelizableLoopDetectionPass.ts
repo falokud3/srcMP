@@ -17,9 +17,9 @@ export function run(program: Xml.Element, programDDG: DataDependenceGraph) {
     for (const outerLoop of outerLoops) {
         messages.push(...parallelizeLoopNest(outerLoop, programDDG));
     }
-    // removeExistingPragmas(program);
+    removeExistingPragmas(program);
     output(...messages);    
-    // insertPragmas(program, messages);
+    insertPragmas(program, messages);
 
     const endTime = performance.now();
     log(`[Parallelizable Loop Detection] End -- Duration: ${(endTime - startTime).toFixed(3)}ms`, Verbosity.Internal);
@@ -29,7 +29,15 @@ function removeExistingPragmas(program: Xml.Element) : void {
     const language = program.get("/xmlns:unit")!.getAttribute("language")!;
     let ompPragmas: Xml.Element[] | undefined;
     if (language === "C++") {
-        ompPragmas = program.find('//cpp:pragma[./omp:directive]');
+        try {
+            ompPragmas = program.find('//cpp:pragma[./omp:directive]');
+        } catch (error) {
+            if (error instanceof Error) {
+                log("//cpp:pragma[./omp:directive] error " + error.message, Verbosity.Internal);
+            }
+            log("Couldn't find any existing omp prgamas ", Verbosity.Internal);
+
+        }
     }
     // py2srcml skips comments
     
@@ -41,11 +49,13 @@ function removeExistingPragmas(program: Xml.Element) : void {
 function insertPragmas(program: Xml.Element, analyzedLoops: ParallelizableStatus[]) : void {
     const parallelizedLoops = analyzedLoops.filter((loopStatus) => loopStatus.isParallelizable && !loopStatus.parallelizableOuterLoop);
     const language = program.get("/xmlns:unit")!.getAttribute("language")!;
-    const pragmaXML = createXml('#pragma omp parallel for', language);
-    for (const loopStatus of parallelizedLoops) {
-        loopStatus.loop.insertBefore(pragmaXML.copy());
-        loopStatus.loop.insertBefore( loopStatus.loop.domNode.ownerDocument.createTextNode('\n'));
-   }
+    if (language === "C++") {
+        const pragmaXML = createXml('#pragma omp parallel for', language);
+        for (const loopStatus of parallelizedLoops) {
+            loopStatus.loop.insertBefore(pragmaXML.copy());
+            loopStatus.loop.insertBefore( loopStatus.loop.domNode.ownerDocument.createTextNode('\n'));
+        }
+    }
 }
 
 function parallelizeLoopNest(outerLoop: Xml.ForLoop, ddg: DataDependenceGraph) : ParallelizableStatus[] {

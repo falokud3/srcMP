@@ -9,32 +9,25 @@
             "request": "launch",
             "name": "srcMP",
             "program": "build/src/srcMP/srcmp.cjs",
-            // "args": ["examples/srcMP/cpp/miv_fail.cpp", "-v 2", "--noEmit"],
-            "args": ["examples/srcMP/py/miv_pass.py", "-v 2", "--noEmit"],
-            "preLaunchTask": "npm: compile"
-        },
-        {
-            "type": "python",
-            "request": "launch",
-            "name": "py2srcml",
-            "program": "py2srcML/py2srcml.py",
-            "args": ["examples/srcMP/py/miv_pass.py"]
+            "args": ["examples/srcMP/cpp/pass.cpp", "-v 2", "--noEmit"],
+            // "args": ["examples/srcMP/py/miv_pass.py", "-v 2", "--noEmit"],
+            "preLaunchTask": "npm: fast-compile"
         },
         {
             "type": "node",
             "request": "launch",
             "name": "Divergence Testing",
             "program": "build/DivergenceTesting/DivergenceTesting.js",
-            "preLaunchTask": "typescript compile",
+            "preLaunchTask": "npm: compile",
             "args": ["tests/divergenceTests/test.cu"]
         },
         {
             "type": "node",
             "request": "launch",
             "name": "benchmark",
-            "program": "build/benchmarks/Benchmark.js",
-            "preLaunchTask": "typescript compile",
-            "args": ["benchmarks/NPB2.3-omp-C/CG/cg.c"]
+            "program": "build/eval/analyze_results.cjs",
+            "preLaunchTask": "npm: compile",
+            // "args": ["benchmarks/NPB2.3-omp-C/CG/cg.c"]
         },
     ]
 }

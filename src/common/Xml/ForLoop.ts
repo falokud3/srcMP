@@ -214,6 +214,9 @@ export class ForLoop extends XmlElement {
             expr = init.get('xmlns:decl/xmlns:init/xmlns:expr');
         } else if (init.contains('xmlns:expr')) {
             expr = init.get('xmlns:expr');
+            if (expr) {
+                expr = Xml.getRHSFromOp(expr.get("xmlns:operator[contains(.,'=')]")!);
+            }
         }
 
         if (!expr) throw new Error("Missing Lowerbound Expresion");
